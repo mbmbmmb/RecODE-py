@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Simulation output (regenerable via simulate_study.py)
+results/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
