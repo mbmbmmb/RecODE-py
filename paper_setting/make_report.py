@@ -242,14 +242,16 @@ def _competitor_table(tbl, keys):
 
 
 def _plot_index(plot_dir):
-    files = sorted(os.path.basename(p) for p in
-                   glob.glob(os.path.join(plot_dir, '*.png')))
+    files = sorted(os.path.relpath(p, plot_dir) for p in
+                   glob.glob(os.path.join(plot_dir, '**', '*.png'),
+                             recursive=True))
     if not files:
         return '_(no plots generated yet)_'
-    rows = ['| Figure | File |', '|---|---|']
+    rows = ['| Group | Figure | File |', '|---|---|---|']
     for f in files:
-        rows.append(f'| {f[:-4].replace("_", " ")} | '
-                    f'`paper_setting/plots/{f}` |')
+        grp = os.path.dirname(f) or '-'
+        name = os.path.basename(f)[:-4].replace('_', ' ')
+        rows.append(f'| `{grp}` | {name} | `paper_setting/plots/{f}` |')
     return '\n'.join(rows)
 
 
