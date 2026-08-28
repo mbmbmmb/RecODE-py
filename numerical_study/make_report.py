@@ -25,8 +25,8 @@ from ode_unify.numerical_study.run_paper import STUDIES, summarize   # noqa: E40
 from ode_unify.numerical_study import paper_values as PV             # noqa: E402
 from ode_unify.paper_dgp import PAPER_DESIGN                       # noqa: E402
 
-RESULTS = os.path.join(HERE, 'simulation_study', 'results')
-PLOTS = os.path.join(HERE, 'simulation_study', 'plots')
+RESULTS = os.path.join(HERE, 'simulation_study', 'random_censoring', 'results')
+PLOTS = os.path.join(HERE, 'simulation_study', 'random_censoring')
 OUT_MD = os.path.join(ROOT, 'ode_unify', 'review', 'simulation_settings.md')
 
 

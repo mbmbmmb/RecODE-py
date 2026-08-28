@@ -16,7 +16,7 @@ import os, numpy as np, pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RES = os.path.join(HERE, 'bic_model_selection', 'results')
-OUT = os.path.join(HERE, 'bic_model_selection', 'plots')
+OUT = os.path.join(HERE, 'bic_model_selection')
 
 ROWS = [(1, 'Cox',  'ODE-Cox',  r'S1  $\alpha=t^2{+}1$,  $q=1$'),
         (2, 'AM',   'ODE-AM',   r'S2  $\alpha=1$,  $q=2/(1{+}u)$'),

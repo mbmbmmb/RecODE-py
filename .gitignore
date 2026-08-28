@@ -19,7 +19,7 @@ dist/
 
 # Monte-Carlo output (regenerable via numerical_study/run_paper.py and
 # run_informative.py); the .csv summaries under bic_model_selection/ are kept.
-numerical_study/simulation_study/results/
+numerical_study/simulation_study/random_censoring/results/
 numerical_study/simulation_study/informative_censoring/results/
 
 # simulate_study.py figures -- superseded by numerical_study/simulation_study/plots/

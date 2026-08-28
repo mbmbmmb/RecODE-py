@@ -50,8 +50,9 @@ from ode_unify.inference import inference                # noqa: E402
 from ode_unify.paper_dgp import simulate_paper           # noqa: E402
 from ode_unify import visual                             # noqa: E402
 
-DEFAULT_RESULTS = os.path.join(HERE, 'simulation_study', 'results')
-DEFAULT_PLOTS = os.path.join(HERE, 'simulation_study', 'plots')
+DEFAULT_RESULTS = os.path.join(HERE, 'simulation_study', 'random_censoring',
+                               'results')
+DEFAULT_PLOTS = os.path.join(HERE, 'simulation_study', 'random_censoring')
 
 
 def _lin(a, b, n=60):
