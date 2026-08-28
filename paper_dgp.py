@@ -38,7 +38,21 @@ import numpy as np
 
 from .dgp import _intensity_factory, frailty
 
-__all__ = ['true_rate_paper', 'paper_design', 'simulate_paper', 'PAPER_DESIGN']
+__all__ = ['true_rate_paper', 'paper_design', 'simulate_paper', 'PAPER_DESIGN',
+           'CUSTOM_FUNCS']
+
+# Settings beyond the paper's six. Setting 7 is a stress test for model
+# selection: q is NON-MONOTONE and oscillating, so it lies far outside the
+# Box-Cox family e^c/(1+rho*u), which is monotone decreasing and hyperbolic.
+# No member of that family can mimic it at any rho or scale, so a criterion
+# that still prefers the parametric transformation here would be at fault.
+# q stays in [0.3, 1.7], safely positive, and over the realised mu range
+# (roughly 0 to 6) the argument 1.5*u spans about 1.4 periods.
+CUSTOM_FUNCS = {
+    7: dict(alpha=lambda t: np.asarray(t, dtype=float) + 1.0,
+            q=lambda u: 1.0 + 0.7 * np.sin(1.5 * np.asarray(u, dtype=float)),
+            desc='alpha(t)=t+1, q(u)=1+0.7 sin(1.5u)  (non-monotone)'),
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -69,7 +83,9 @@ def true_rate_paper(setting, rho1=0.5):
     if setting == 4:
         return lambda t, m: (2.0 * m * (t + 1.0)
                              / np.sqrt(2.0 * m * t * (t + 2.0) + 1.0))
-    raise ValueError(f'unknown paper setting={setting} (expected 1-6)')
+    if setting in CUSTOM_FUNCS:
+        return None          # no closed form; integrated numerically
+    raise ValueError(f'unknown paper setting={setting} (expected 1-7)')
 
 
 # --------------------------------------------------------------------------- #
@@ -99,6 +115,9 @@ PAPER_DESIGN = {
     6: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
             random_effect=True, n_paper=2000,
             desc='Gamma frailty, AFT-type: alpha=1, q=2/(t+1)'),
+    7: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000,
+            desc='non-monotone q: alpha=t+1, q=1+0.7 sin(1.5 u)'),
 }
 
 
@@ -190,7 +209,12 @@ def simulate_paper(N, seed, setting, *, beta=(1.0, 1.0, 1.0), rho1=0.5, r1=1.0,
         u = u * np.power(np.maximum(xi, 1e-12), float(censor_frailty_coef))
 
     rate = true_rate_paper(setting, rho1)
-    make_lam = _intensity_factory(None, rate, None, None, rho1, None)
+    if rate is None:                       # custom alpha/q, solved numerically
+        cf = CUSTOM_FUNCS[setting]
+        make_lam = _intensity_factory(None, None, cf['alpha'], cf['q'],
+                                      rho1, None)
+    else:
+        make_lam = _intensity_factory(None, rate, None, None, rho1, None)
 
     rows = []
     for i in range(N):
