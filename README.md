@@ -287,24 +287,33 @@ ode_unify/
 ├── _engine/             # internal numerical kernels
 │   ├── cox/  aft/  ltm/  npmle/
 │   └── random_effect/   # frailty variants
-└── paper_setting/       # reproduction of the paper's simulation section
-    ├── run_paper.py         # 15-study registry, pooled runner, plots
-    ├── run_informative.py   # informative-censoring study (parallel)
-    ├── paper_values.py      # published values, transcribed
-    ├── make_report.py       # side-by-side report generator
-    ├── plot_informative.py  # informative-censoring figure
-    └── plots/               # figures, grouped by model family
-        ├── cox/                 # ODE-Cox
-        ├── am/                  # ODE-AM
-        ├── ltm/                 # ODE-LT and ODE-Flex
-        ├── random_effect/       # gamma-frailty variants
-        │   ├── cox/  am/  ltm/
-        └── informative/         # informative-censoring figure
+└── numerical_study/     # all numerical work; scripts at the top level
+    ├── run_paper.py             # 15-study registry, pooled runner, plots
+    ├── run_informative.py       # informative-censoring study (parallel)
+    ├── bic_selection.py         # BIC model-selection study
+    ├── paper_values.py          # published values, transcribed
+    ├── make_report.py           # side-by-side report generator
+    ├── plot_informative.py      # informative-censoring figure
+    ├── plot_bic_selection.py    # model-selection figure
+    ├── simulation_study/        # reproduction of the paper's Section 5
+    │   ├── results/                 # per-replication .npz (git-ignored)
+    │   ├── plots/
+    │   │   ├── cox/  am/  ltm/
+    │   │   └── random_effect/{cox,am,ltm}/
+    │   └── informative_censoring/
+    │       ├── results/             # per-regime .npz (git-ignored)
+    │       └── plots/
+    └── bic_model_selection/
+        ├── results/                 # selection rates (.csv)
+        └── plots/
 ```
 
-`results/` and `paper_setting/results/` (per-replication `.npz` output) are
+Scripts live directly in `numerical_study/`; each study keeps its own `results/`
+and `plots/` beside them.
+
+`results/` and `numerical_study/results/` (per-replication `.npz` output) are
 regenerable and git-ignored, as is `plots/` from `simulate_study.py` (superseded
-by `paper_setting/plots/`).
+by `numerical_study/plots/`).
 
 ## Reproducing the paper's simulation section
 
@@ -315,11 +324,11 @@ specified in §5 of the paper, so the Monte-Carlo summaries are directly compara
 the published tables.
 
 ```bash
-python -m ode_unify.paper_setting.run_paper list                     # 15 studies
-python -m ode_unify.paper_setting.run_paper run  --reps 1000 --workers 10
-python -m ode_unify.paper_setting.run_paper plot
-python -m ode_unify.paper_setting.run_paper report                   # Bias/SE/ESE/CP
-python -m ode_unify.paper_setting.make_report                        # full markdown report
+python -m ode_unify.numerical_study.run_paper list                     # 15 studies
+python -m ode_unify.numerical_study.run_paper run  --reps 1000 --workers 10
+python -m ode_unify.numerical_study.run_paper plot
+python -m ode_unify.numerical_study.run_paper report                   # Bias/SE/ESE/CP
+python -m ode_unify.numerical_study.make_report                        # full markdown report
 ```
 
 Runs are resumable: a seed whose `.npz` already exists is skipped, so extending
@@ -333,8 +342,8 @@ one-pool-per-study behaviour.
 ```bash
 python -m ode_unify.sim_informative_censoring --paper --setting 1 \
     --N 1000 --reps 100 --beta 1 1 1 --gamma_c -0.5 -0.5 -0.5 \
-    --c_xi 1.0 --with_frailty --save_dir ode_unify/paper_setting/results/informative
-python -m ode_unify.paper_setting.plot_informative
+    --c_xi 1.0 --with_frailty --save_dir ode_unify/numerical_study/results/informative
+python -m ode_unify.numerical_study.plot_informative
 ```
 
 Each subject's censoring time is `C_i = C0_i · exp(x_i'γ_c) · ξ_i^{c_ξ}`. With

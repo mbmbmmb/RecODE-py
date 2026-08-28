@@ -15,8 +15,8 @@ from __future__ import annotations
 import os, numpy as np, pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RES = os.path.join(HERE, 'results')
-OUT = os.path.join(HERE, 'plots', 'model_selection')
+RES = os.path.join(HERE, 'bic_model_selection', 'results')
+OUT = os.path.join(HERE, 'bic_model_selection', 'plots')
 
 ROWS = [(1, 'Cox',  'ODE-Cox',  r'S1  $\alpha=t^2{+}1$,  $q=1$'),
         (2, 'AM',   'ODE-AM',   r'S2  $\alpha=1$,  $q=2/(1{+}u)$'),

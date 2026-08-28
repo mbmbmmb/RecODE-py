@@ -7,8 +7,9 @@ __pycache__/
 build/
 dist/
 
-# Simulation output (regenerable via simulate_study.py)
-results/
+# simulate_study.py output (regenerable) -- anchored so it does not match
+# the per-study results/ folders under numerical_study/
+/results/
 
 # OS / editor
 .DS_Store
@@ -16,10 +17,12 @@ results/
 .vscode/
 *.swp
 
-# Paper-setting Monte-Carlo output (90MB, regenerable via paper_setting/run_paper.py)
-paper_setting/results/
+# Monte-Carlo output (regenerable via numerical_study/run_paper.py and
+# run_informative.py); the .csv summaries under bic_model_selection/ are kept.
+numerical_study/simulation_study/results/
+numerical_study/simulation_study/informative_censoring/results/
 
-# simulate_study.py figures -- superseded by paper_setting/plots/
+# simulate_study.py figures -- superseded by numerical_study/simulation_study/plots/
 /plots/
 
 # Manuscript source and confidential referee material -- not for a public repo

@@ -4,7 +4,7 @@ Emits one section per published table, each showing the paper's value and the
 locally recomputed value side by side, plus the informative-censoring study and
 the figure index. Re-run after extending the replication count::
 
-    python -m ode_unify.paper_setting.make_report --reps 100
+    python -m ode_unify.numerical_study.make_report --reps 100
 """
 from __future__ import annotations
 
@@ -21,12 +21,12 @@ ROOT = os.path.dirname(PKG)
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from ode_unify.paper_setting.run_paper import STUDIES, summarize   # noqa: E402
-from ode_unify.paper_setting import paper_values as PV             # noqa: E402
+from ode_unify.numerical_study.run_paper import STUDIES, summarize   # noqa: E402
+from ode_unify.numerical_study import paper_values as PV             # noqa: E402
 from ode_unify.paper_dgp import PAPER_DESIGN                       # noqa: E402
 
-RESULTS = os.path.join(HERE, 'results')
-PLOTS = os.path.join(HERE, 'plots')
+RESULTS = os.path.join(HERE, 'simulation_study', 'results')
+PLOTS = os.path.join(HERE, 'simulation_study', 'plots')
 OUT_MD = os.path.join(ROOT, 'ode_unify', 'review', 'simulation_settings.md')
 
 
@@ -165,7 +165,7 @@ def main(argv=None):
     ap.add_argument('--results', default=RESULTS)
     ap.add_argument('--plots', default=PLOTS)
     ap.add_argument('--informative',
-                    default=os.path.join(RESULTS, 'informative'))
+                    default=os.path.join(HERE, 'simulation_study', 'informative_censoring', 'results'))
     ap.add_argument('--out', default=OUT_MD)
     args = ap.parse_args(argv)
 
@@ -216,7 +216,12 @@ def _design_table():
     A = {1: 't^2+1', 2: '1', 3: '0.2/(1+t)', 4: 't+1', 5: 't^2+1', 6: '1'}
     Q = {1: '1', 2: '2/(1+u)', 3: '1/(u/2+1)', 4: '2/(1+u)', 5: '1',
          6: '2/(1+u)'}
-    for s, d in PAPER_DESIGN.items():
+    # only the paper's own six settings belong in this table; paper_dgp also
+    # defines Setting 7, a non-monotone-q stress test used by the model-selection
+    # study, which has no counterpart in the published tables.
+    for s, d in sorted(PAPER_DESIGN.items()):
+        if s not in A:
+            continue
         cov = ('N(0, 0.5) trunc +-4' if d['cov'] == 'normal'
                else 'x1,x2 ~ N(0,1) trunc +-1; x3 ~ Bern(0.5)')
         c = d['censor']
@@ -251,7 +256,7 @@ def _plot_index(plot_dir):
     for f in files:
         grp = os.path.dirname(f) or '-'
         name = os.path.basename(f)[:-4].replace('_', ' ')
-        rows.append(f'| `{grp}` | {name} | `paper_setting/plots/{f}` |')
+        rows.append(f'| `{grp}` | {name} | `numerical_study/plots/{f}` |')
     return '\n'.join(rows)
 
 
@@ -261,13 +266,13 @@ TEMPLATE = '''# Paper Simulation Settings — Reproduction with the Paper-Faithf
 Equations* — §5 of `latex/main.tex`
 **Replications:** {reps} per setting
 **Generator:** `ode_unify/paper_dgp.py` (`simulate_paper`, `true_rate_paper`)
-**Runner:** `ode_unify/paper_setting/run_paper.py`
-**Results:** `ode_unify/paper_setting/results/` · **Plots:** `ode_unify/paper_setting/plots/`
+**Runner:** `ode_unify/numerical_study/run_paper.py`
+**Results:** `ode_unify/numerical_study/results/` · **Plots:** `ode_unify/numerical_study/plots/`
 
 Every number in the **local** columns below was recomputed from scratch with a
 generator that matches the paper's stated covariate design and censoring
 distribution setting by setting. Numbers in the **paper** columns are
-transcribed verbatim from Tables 1-3 of `main.tex` (`paper_setting/paper_values.py`).
+transcribed verbatim from Tables 1-3 of `main.tex` (`numerical_study/paper_values.py`).
 
 > **Why a new generator.** `ode_unify/dgp.py` hard-codes one covariate design
 > (two N(0,1) clipped at +-1 plus a Bernoulli(0.5)) and defaults to `U(2,4)`
@@ -483,17 +488,17 @@ reproduced, since it is a comparison against those same external methods.
 ```bash
 cd /Users/bomeng/Desktop/research/review/jmlr/code
 
-python3 -m ode_unify.paper_setting.run_paper list
-python3 -m ode_unify.paper_setting.run_paper run  --reps 100 --workers 10
-python3 -m ode_unify.paper_setting.run_paper plot
-python3 -m ode_unify.paper_setting.run_paper report
+python3 -m ode_unify.numerical_study.run_paper list
+python3 -m ode_unify.numerical_study.run_paper run  --reps 100 --workers 10
+python3 -m ode_unify.numerical_study.run_paper plot
+python3 -m ode_unify.numerical_study.run_paper report
 
 python3 -m ode_unify.sim_informative_censoring --paper --setting 1 \
     --N 1000 --reps 100 --beta 1 1 1 --gamma_c -0.5 -0.5 -0.5 \
     --c_xi 1.0 --with_frailty \
-    --save_dir ode_unify/paper_setting/results/informative
+    --save_dir ode_unify/numerical_study/results/informative
 
-python3 -m ode_unify.paper_setting.make_report
+python3 -m ode_unify.numerical_study.make_report
 ```
 
 Runs are resumable: `_run_one` skips a seed whose `.npz` already exists, so

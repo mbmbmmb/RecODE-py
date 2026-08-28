@@ -14,8 +14,8 @@ with C0_i drawn from the setting's own paper censoring window.
 
 Usage::
 
-    python -m ode_unify.paper_setting.run_informative --reps 1000 --workers 10
-    python -m ode_unify.paper_setting.run_informative --only cov_decr --reps 100
+    python -m ode_unify.numerical_study.run_informative --reps 1000 --workers 10
+    python -m ode_unify.numerical_study.run_informative --only cov_decr --reps 100
 """
 from __future__ import annotations
 import argparse, contextlib, io, os, sys, time
@@ -30,7 +30,7 @@ if ROOT not in sys.path:
 import ode_unify as U                                     # noqa: E402
 from ode_unify.paper_dgp import simulate_paper            # noqa: E402
 
-OUT = os.path.join(HERE, 'results', 'informative')
+OUT = os.path.join(HERE, 'simulation_study', 'informative_censoring', 'results')
 
 # name -> (gamma_c, c_xi, random_effect, description)
 # The estimator must MATCH the data-generating setting -- otherwise the study
