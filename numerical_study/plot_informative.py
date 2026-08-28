@@ -13,7 +13,7 @@ import os, numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RES = os.path.join(HERE, 'simulation_study', 'informative_censoring', 'results')
-OUT = os.path.join(HERE, 'simulation_study', 'informative_censoring', 'plots')
+OUT = os.path.join(HERE, 'simulation_study', 'informative_censoring')
 
 REGIMES = [('random',   r"random:  $C\sim U(a,b)$"),
            ('cov',      r"covariate-dep:  $C=C_0e^{x'\gamma_c}$, $\gamma_c=-0.5$"),

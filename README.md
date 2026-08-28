@@ -295,21 +295,22 @@ ode_unify/
     ├── make_report.py           # side-by-side report generator
     ├── plot_informative.py      # informative-censoring figure
     ├── plot_bic_selection.py    # model-selection figure
-    ├── simulation_study/        # reproduction of the paper's Section 5
-    │   ├── results/                 # per-replication .npz (git-ignored)
-    │   ├── plots/
-    │   │   ├── cox/  am/  ltm/
+    ├── simulation_study/        # reproduction of the paper's Section 5,
+    │   │                        # split by censoring type
+    │   ├── random_censoring/        # C ~ U(a,b), the paper's own settings
+    │   │   ├── results/                 # per-replication .npz (git-ignored)
+    │   │   ├── cox/  am/  ltm/          # figures, by model family
     │   │   └── random_effect/{cox,am,ltm}/
-    │   └── informative_censoring/
-    │       ├── results/             # per-regime .npz (git-ignored)
-    │       └── plots/
+    │   └── informative_censoring/   # C depending on x, and on the frailty
+    │       ├── results/                 # per-regime .npz (git-ignored)
+    │       └── informative_censoring.png
     └── bic_model_selection/
         ├── results/                 # selection rates (.csv)
-        └── plots/
+        └── bic_model_selection.png
 ```
 
-Scripts live directly in `numerical_study/`; each study keeps its own `results/`
-and `plots/` beside them.
+Scripts live directly in `numerical_study/`; each study keeps its own results and
+figures beside them, with the simulation study split by censoring type.
 
 `results/` and `numerical_study/results/` (per-replication `.npz` output) are
 regenerable and git-ignored, as is `plots/` from `simulate_study.py` (superseded
