@@ -9,12 +9,13 @@ from __future__ import annotations
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from ...common import spcol, spcol_deriv, unique_sort_index
+from ...common import spcol, spcol_deriv, unique_sort_index, solve_ode, ode_guard
 from .time_transform_func import time_transform_func
 from .time_transform_grad_func import time_transform_grad_func
 from .forward_odesystem_func import forward_odesystem_func
 
 
+@ode_guard
 def objective_func_sieve(r, x, time, delta, beta,
                          knots_0, knots_q, k0, kq):
     x = np.asarray(x, dtype=float)
@@ -40,7 +41,7 @@ def objective_func_sieve(r, x, time, delta, beta,
     def rhs_alpha(t, y):
         return time_transform_func(t, alpha, knots_0, k0)
 
-    sol_a = solve_ivp(rhs_alpha, (tspan[0], tspan[-1]), [0.0],
+    sol_a = solve_ode(rhs_alpha, (tspan[0], tspan[-1]), [0.0],
                       t_eval=tspan, method='RK45', rtol=1e-6, atol=1e-7)
     int_alpha = sol_a.y[0][1:][bin_time]
     time_transform = int_alpha * multi_coef
@@ -51,7 +52,7 @@ def objective_func_sieve(r, x, time, delta, beta,
     def rhs_fwd(t, y):
         return forward_odesystem_func(y, theta, knots_q, kq)
 
-    sol_f = solve_ivp(rhs_fwd, (tspan_t[0], tspan_t[-1]),
+    sol_f = solve_ode(rhs_fwd, (tspan_t[0], tspan_t[-1]),
                       np.zeros(q_q + 1), t_eval=tspan_t, method='RK45',
                       rtol=1e-6, atol=1e-7)
     res = sol_f.y[:, 1:].T
@@ -73,7 +74,7 @@ def objective_func_sieve(r, x, time, delta, beta,
         return time_transform_grad_func(t, alpha, knots_0, k0).ravel()
 
     tspan_a = np.concatenate([[1e-8], u_time])
-    sol_da = solve_ivp(rhs_dalpha, (tspan_a[0], tspan_a[-1]),
+    sol_da = solve_ode(rhs_dalpha, (tspan_a[0], tspan_a[-1]),
                        np.zeros(q_0), t_eval=tspan_a, method='RK45',
                        rtol=1e-6, atol=1e-7)
     int_dalpha = sol_da.y[:, 1:].T[bin_time]
