@@ -21,10 +21,10 @@ ODE module. Their published values are carried over verbatim in the report.
 
 Usage::
 
-    python -m ode_unify.paper_setting.run_paper list
-    python -m ode_unify.paper_setting.run_paper all  --reps 100 --workers 9
-    python -m ode_unify.paper_setting.run_paper run  --only t1_cox_s1 --reps 100
-    python -m ode_unify.paper_setting.run_paper plot
+    python -m ode_unify.numerical_study.run_paper list
+    python -m ode_unify.numerical_study.run_paper all  --reps 100 --workers 9
+    python -m ode_unify.numerical_study.run_paper run  --only t1_cox_s1 --reps 100
+    python -m ode_unify.numerical_study.run_paper plot
 """
 from __future__ import annotations
 
@@ -50,8 +50,8 @@ from ode_unify.inference import inference                # noqa: E402
 from ode_unify.paper_dgp import simulate_paper           # noqa: E402
 from ode_unify import visual                             # noqa: E402
 
-DEFAULT_RESULTS = os.path.join(HERE, 'results')
-DEFAULT_PLOTS = os.path.join(HERE, 'plots')
+DEFAULT_RESULTS = os.path.join(HERE, 'simulation_study', 'results')
+DEFAULT_PLOTS = os.path.join(HERE, 'simulation_study', 'plots')
 
 
 def _lin(a, b, n=60):

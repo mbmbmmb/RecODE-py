@@ -11,8 +11,8 @@ known truth we record which model BIC (and AIC) selects.
 
 Usage::
 
-    python -m ode_unify.paper_setting.bic_selection --reps 100 --workers 10
-    python -m ode_unify.paper_setting.bic_selection --grid 4:1000 4:2000 4:4000
+    python -m ode_unify.numerical_study.bic_selection --reps 100 --workers 10
+    python -m ode_unify.numerical_study.bic_selection --grid 4:1000 4:2000 4:4000
 """
 from __future__ import annotations
 import argparse, contextlib, io, os, sys, time
@@ -153,7 +153,8 @@ def main(argv=None):
     ap.add_argument('--alpha-knots-extra', type=int, default=0,
                     help='extra interior knots for log alpha(t) beyond the '
                          'default ceil(#unique times ^ 1/5)')
-    ap.add_argument('--out', default=os.path.join(HERE, 'results',
+    ap.add_argument('--out', default=os.path.join(HERE, 'bic_model_selection',
+                                                  'results',
                                                   'bic_selection.csv'))
     a = ap.parse_args(argv)
     grid = [tuple(int(v) for v in g.split(':')) for g in a.grid]
