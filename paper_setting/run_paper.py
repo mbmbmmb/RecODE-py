@@ -150,9 +150,10 @@ def flex_scales(ests, setting, N):
     return c, 1.0 / c
 
 
-def _single(slug, est, setting, N, knots, re, label, truth, grid, ylabel, out):
+def _single(slug, est, setting, N, knots, re, label, truth, grid, ylabel, out,
+            group='misc'):
     return dict(slug=slug, estimator=est, setting=setting, N=N, knots=knots,
-                random_effect=re, kind='single', label=label,
+                random_effect=re, kind='single', label=label, group=group,
                 truth=truth, grid=grid, ylabel=ylabel, out=out)
 
 
@@ -162,16 +163,17 @@ STUDIES = {
         't1_cox_s1', 'cox', 1, 1000, None, False,
         'Table 1 / Setting 1 / ODE-Cox',
         TRUE_ALPHA[1], grid_alpha(1, 1000), r'$\alpha(t)=t^2+1$',
-        't1_cox_s1.png'),
+        'setting1.png', group='cox'),
     't1_am_s2': _single(
         't1_am_s2', 'aft', 2, 1000, 'quantile', False,
         'Table 1 / Setting 2 / ODE-AM',
-        TRUE_Q[2], grid_q(2, 1000), r'$q(u)=2/(1+u)$', 't1_am_s2.png'),
+        TRUE_Q[2], grid_q(2, 1000), r'$q(u)=2/(1+u)$', 'setting2.png',
+        group='am'),
     't1_lt_s3': _single(
         't1_lt_s3', 'npmle', 3, 1000, 'equal', False,
         'Table 1 / Setting 3 / ODE-LT',
         TRUE_ALPHA[3], grid_alpha(3, 1000), r'$\alpha(t)=0.2/(1+t)$',
-        't1_lt_s3.png'),
+        'setting3_lt.png', group='ltm'),
     # ---- Table 2: ODE-Flex on settings 1-4, n=1000 ------------------------
     # Knot placement follows §5.1's per-setting prescription, and each choice
     # was confirmed by a knot sweep (30 seeds, bias on beta_2/beta_3):
@@ -189,28 +191,31 @@ STUDIES = {
         label=f'Table 2 / Setting {s} / ODE-Flex',
         truth_alpha=TRUE_ALPHA[s], truth_q=TRUE_Q[s],
         grid_t=grid_alpha(s, 1000), grid_u=grid_q(s, 1000),
-        out_alpha=f't2_flex_s{s}_alpha.png', out_q=f't2_flex_s{s}_q.png')
+        group='ltm',
+        out_alpha=f'setting{s}_flex_alpha.png', out_q=f'setting{s}_flex_q.png')
        for s in (1, 2, 3, 4)},
     # ---- Table 3: Gamma frailty, settings 5-6, n=2000 and 4000 ------------
     **{f't3_cox_s5_n{n}': _single(
         f't3_cox_s5_n{n}', 'cox', 5, n, None, True,
         f'Table 3 / Setting 5 / ODE-Cox / n={n}',
         TRUE_ALPHA[5], grid_alpha(5, n), r'$\alpha(t)=t^2+1$',
-        f't3_cox_s5_n{n}.png') for n in (2000, 4000)},
+        f'setting5_n{n}.png', group='random_effect/cox')
+       for n in (2000, 4000)},
     **{f't3_am_s6_n{n}': _single(
         f't3_am_s6_n{n}', 'aft', 6, n, 'quantile', True,
         f'Table 3 / Setting 6 / ODE-AM / n={n}',
         TRUE_Q[6], grid_q(6, n), r'$q(u)=2/(1+u)$',
-        f't3_am_s6_n{n}.png') for n in (2000, 4000)},
+        f'setting6_n{n}.png', group='random_effect/am')
+       for n in (2000, 4000)},
     **{f't3_flex_s{s}_n{n}': dict(
         slug=f't3_flex_s{s}_n{n}', estimator='ltm', setting=s, N=n,
         knots='K4', random_effect=True, kind='ltm',
         label=f'Table 3 / Setting {s} / ODE-Flex / n={n}',
         truth_alpha=TRUE_ALPHA[s], truth_q=TRUE_Q[s],
         grid_t=grid_alpha(s, n), grid_u=grid_q(s, n),
-        resample_B=(1500 if s == 5 else 2000),
-        out_alpha=f't3_flex_s{s}_n{n}_alpha.png',
-        out_q=f't3_flex_s{s}_n{n}_q.png')
+        resample_B=(1500 if s == 5 else 2000), group='random_effect/ltm',
+        out_alpha=f'setting{s}_flex_n{n}_alpha.png',
+        out_q=f'setting{s}_flex_n{n}_q.png')
        for s in (5, 6) for n in (2000, 4000)},
 }
 
@@ -488,17 +493,18 @@ def plot_study(slug, out_root=DEFAULT_RESULTS, plot_root=DEFAULT_PLOTS):
     files = sorted(f for f in os.listdir(d)
                    if f.startswith('seed') and f.endswith('.npz'))
     ests = [_load_estimate(os.path.join(d, f), cfg) for f in files]
-    os.makedirs(plot_root, exist_ok=True)
+    plot_dir = os.path.join(plot_root, cfg.get('group', 'misc'))
+    os.makedirs(plot_dir, exist_ok=True)
     if cfg['kind'] == 'single':
         out = visual.band_plot(
-            ests, os.path.join(plot_root, cfg['out']), truth=cfg['truth'],
+            ests, os.path.join(plot_dir, cfg['out']), truth=cfg['truth'],
             grid=cfg['grid'], title=cfg['label'], ylabel=cfg['ylabel'])
         print(f'  wrote {out}')
         return [out]
     sa, sq = flex_scales(ests, cfg['setting'], cfg['N'])
     pa, pq = visual.ltm_band_plot(
-        ests, os.path.join(plot_root, cfg['out_alpha']),
-        os.path.join(plot_root, cfg['out_q']),
+        ests, os.path.join(plot_dir, cfg['out_alpha']),
+        os.path.join(plot_dir, cfg['out_q']),
         truth_alpha=cfg['truth_alpha'], truth_q=cfg['truth_q'],
         grid_t=cfg['grid_t'], grid_u=cfg['grid_u'],
         scale_a=sa, scale_q=sq,

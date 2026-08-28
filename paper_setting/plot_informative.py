@@ -13,12 +13,15 @@ import os, numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RES = os.path.join(HERE, 'results', 'informative')
-OUT = os.path.join(HERE, 'plots')
+OUT = os.path.join(HERE, 'plots', 'informative')
 
-# regimes where conditional independence given X holds
-REGIMES = [('random', 'Random censoring\n$C \\sim U(a,b)$'),
-           ('cov', "Covariate-dependent\n$C = C_0\\,e^{x'\\gamma_c}$"),
-           ('random_fr', 'Random censoring\n+ gamma frailty')]
+# regimes in which conditional independence given X holds. The
+# frailty-informative regime (C depending on the unobserved xi) is excluded --
+# it is the assumption-violating stress test, reported numerically in the text.
+REGIMES = [('random', 'Random\n$C \\sim U(a,b)$'),
+           ('cov', "Covariate-dependent\n$C = C_0 e^{x'\\gamma_c}$, $\\gamma_c=-0.5$"),
+           ('cov_decr', "Monotone decreasing\n$C = C_0 e^{-x'\\beta}$"),
+           ('random_fr', 'Random\n+ gamma frailty')]
 
 
 def main(out=None):
@@ -34,7 +37,7 @@ def main(out=None):
         data[k] = np.load(f, allow_pickle=True)
 
     p = data[REGIMES[0][0]]['truth'].size
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.4))
     xs = np.arange(len(REGIMES))
     w = 0.8 / p
     cols = plt.cm.tab10(np.linspace(0, 0.3, p))
@@ -67,11 +70,13 @@ def main(out=None):
     ax.axhline(0.95, color='r', ls='--', lw=1.2, label='nominal 0.95')
     ax.set_xticks(xs); ax.set_xticklabels([l for _, l in REGIMES], fontsize=9)
     ax.set_ylim(0.80, 1.0); ax.set_ylabel('empirical coverage')
+    ax.axhline(0.95, color='r', ls='--', lw=1.2)
     ax.set_title('95% CI coverage')
     ax.legend(fontsize=9, loc='lower right'); ax.grid(True, axis='y', alpha=0.3)
 
+    nrep = data[REGIMES[0][0]]['beta'].shape[0]
     fig.suptitle('Informative censoring: regimes where conditional independence '
-                 'given $X$ holds', fontsize=12)
+                 f'given $X$ holds ({nrep} replications)', fontsize=12)
     fig.tight_layout()
     os.makedirs(OUT, exist_ok=True)
     path = out or os.path.join(OUT, 'informative_censoring.png')

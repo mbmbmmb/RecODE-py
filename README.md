@@ -287,17 +287,24 @@ ode_unify/
 ├── _engine/             # internal numerical kernels
 │   ├── cox/  aft/  ltm/  npmle/
 │   └── random_effect/   # frailty variants
-├── paper_setting/       # reproduction of the paper's simulation section
-│   ├── run_paper.py         # 15-study registry, pooled runner, plots
-│   ├── paper_values.py      # published values, transcribed
-│   ├── make_report.py       # side-by-side report generator
-│   ├── plot_informative.py  # informative-censoring figure
-│   └── plots/               # rendered figures (.png)
-└── plots/               # figures from simulate_study.py
+└── paper_setting/       # reproduction of the paper's simulation section
+    ├── run_paper.py         # 15-study registry, pooled runner, plots
+    ├── run_informative.py   # informative-censoring study (parallel)
+    ├── paper_values.py      # published values, transcribed
+    ├── make_report.py       # side-by-side report generator
+    ├── plot_informative.py  # informative-censoring figure
+    └── plots/               # figures, grouped by model family
+        ├── cox/                 # ODE-Cox
+        ├── am/                  # ODE-AM
+        ├── ltm/                 # ODE-LT and ODE-Flex
+        ├── random_effect/       # gamma-frailty variants
+        │   ├── cox/  am/  ltm/
+        └── informative/         # informative-censoring figure
 ```
 
 `results/` and `paper_setting/results/` (per-replication `.npz` output) are
-regenerable and git-ignored.
+regenerable and git-ignored, as is `plots/` from `simulate_study.py` (superseded
+by `paper_setting/plots/`).
 
 ## Reproducing the paper's simulation section
 

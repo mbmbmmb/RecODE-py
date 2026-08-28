@@ -19,6 +19,9 @@ results/
 # Paper-setting Monte-Carlo output (90MB, regenerable via paper_setting/run_paper.py)
 paper_setting/results/
 
+# simulate_study.py figures -- superseded by paper_setting/plots/
+plots/
+
 # Manuscript source and confidential referee material -- not for a public repo
 latex/
 review/
