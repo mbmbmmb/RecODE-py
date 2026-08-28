@@ -9,11 +9,12 @@ from __future__ import annotations
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from ..common import spcol, spcol_deriv, unique_sort_index
+from ..common import spcol, spcol_deriv, unique_sort_index, solve_ode, ode_guard
 from .time_transform_func import time_transform_func
 from .hazard_ode_func import hazard_ode_func
 
 
+@ode_guard
 def objective_func_beta(r, x, time, delta, id_vec, theta, alpha,
                         knots_0, knots_q, k0, kq, ci=False):
     x = np.asarray(x, dtype=float)
@@ -37,7 +38,7 @@ def objective_func_beta(r, x, time, delta, id_vec, theta, alpha,
     def rhs_a(t, y):
         return time_transform_func(t, alpha, knots_0, k0)
 
-    sol_a = solve_ivp(rhs_a, (tspan[0], tspan[-1]), [0.0],
+    sol_a = solve_ode(rhs_a, (tspan[0], tspan[-1]), [0.0],
                       t_eval=tspan, method='RK45', rtol=1e-9, atol=1e-9)
     int_alpha = sol_a.y[0][1:][bin_time]
     time_transform = int_alpha * multi_coef
@@ -48,7 +49,7 @@ def objective_func_beta(r, x, time, delta, id_vec, theta, alpha,
     def rhs_c(t, y):
         return hazard_ode_func(y, theta, knots_q, kq)
 
-    sol_c = solve_ivp(rhs_c, (tspan_t[0], tspan_t[-1]), [0.0],
+    sol_c = solve_ode(rhs_c, (tspan_t[0], tspan_t[-1]), [0.0],
                       t_eval=tspan_t, method='RK45', rtol=1e-6, atol=1e-7)
     cum_hazard = sol_c.y[0][1:][bin_t]
 
