@@ -33,6 +33,11 @@ from ode_unify.paper_dgp import simulate_paper            # noqa: E402
 OUT = os.path.join(HERE, 'results', 'informative')
 
 # name -> (gamma_c, c_xi, random_effect, description)
+# The estimator must MATCH the data-generating setting -- otherwise the study
+# measures model misspecification rather than the effect of censoring.
+ESTIMATOR = {1: ('cox', None), 2: ('aft', 'quantile'),
+             3: ('npmle', 'equal'), 4: ('ltm', 'K4')}
+
 REGIMES = {
     'random':      (None,               0.0, False, 'C ~ U(a,b)'),
     'cov':         ([-0.5, -0.5, -0.5], 0.0, False, "C = C0*exp(x'gamma_c), gamma_c=-0.5"),
@@ -53,11 +58,15 @@ def _one(args):
                 contextlib.redirect_stderr(io.StringIO()):
             d = simulate_paper(N, seed, setting, beta=beta, random_effect=re,
                                censor_coef=gc, censor_frailty_coef=cxi)
-            est = U.fit(d, estimator='cox', random_effect=re, ci=True,
-                        seed=seed, data_setting=setting)
+            estr, knots = ESTIMATOR[setting]
+            est = U.fit(d, estimator=estr, random_effect=re, knots=knots,
+                        ci=True, seed=seed, data_setting=setting)
         p = len(beta)
         se = est.se.ravel() if est.se is not None else np.full(p, np.nan)
-        return name, seed, est.beta.ravel(), se, int((d['delta'].ravel() == 1).sum())
+        b = est.beta.ravel().astype(float).copy()
+        if ESTIMATOR[setting][0] == 'ltm':
+            b[0] = np.nan; se[0] = np.nan     # beta_1 is the fixed anchor
+        return name, seed, b, se, int((d['delta'].ravel() == 1).sum())
     except Exception:                                       # noqa: BLE001
         return name, seed, None, None, 0
 
@@ -74,13 +83,16 @@ def run(name, reps, N, setting, beta, workers, out_dir):
             if b is not None:
                 B[seed - 1] = b; S[seed - 1] = s; ev.append(ne); ok += 1
     truth = np.asarray(beta, float)
-    good = np.isfinite(B[:, 0])
+    # any finite column: the LTM anchor beta_1 is deliberately NaN
+    good = np.isfinite(B).any(axis=1)
     bias = np.nanmean(B, 0) - truth
     esd = np.nanstd(B, 0, ddof=1)
     mse = np.nanmean(S, 0)
-    cov = np.nanmean(((B - 1.96 * S) <= truth) & (truth <= (B + 1.96 * S)), 0)
+    inside = ((B - 1.96 * S) <= truth) & (truth <= (B + 1.96 * S))
+    inside = np.where(np.isfinite(B) & np.isfinite(S), inside.astype(float), np.nan)
+    cov = np.nanmean(inside, 0)          # NaN columns (the LTM anchor) excluded
     os.makedirs(out_dir, exist_ok=True)
-    np.savez_compressed(os.path.join(out_dir, f'{name}.npz'),
+    np.savez_compressed(os.path.join(out_dir, f's{setting}_{name}.npz'),
                         beta=B[good], se=S[good], truth=truth,
                         events=np.array(ev), ok=ok, reps=reps, N=N,
                         setting=setting, gamma_c=np.array(REGIMES[name][0] or [0.0] * p),
@@ -90,7 +102,7 @@ def run(name, reps, N, setting, beta, workers, out_dir):
     print(f'    bias    = {np.round(bias, 4)}', flush=True)
     print(f'    emp.SD  = {np.round(esd, 4)}', flush=True)
     print(f'    mean.SE = {np.round(mse, 4)}', flush=True)
-    print(f'    CP95    = {np.round(cov, 4)}   mean={np.mean(cov):.3f}', flush=True)
+    print(f'    CP95    = {np.round(cov, 4)}   mean={np.nanmean(cov):.3f}', flush=True)
     return dict(name=name, ok=ok, bias=bias, cov=cov)
 
 
@@ -99,7 +111,7 @@ def main(argv=None):
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--reps', type=int, default=1000)
     ap.add_argument('--N', type=int, default=1000)
-    ap.add_argument('--setting', type=int, default=1)
+    ap.add_argument('--setting', type=int, nargs='+', default=[1])
     ap.add_argument('--beta', type=float, nargs='+', default=[1.0, 1.0, 1.0])
     ap.add_argument('--workers', type=int, default=10)
     ap.add_argument('--only', nargs='*', default=None)
@@ -109,16 +121,21 @@ def main(argv=None):
     bad = [s for s in sel if s not in REGIMES]
     if bad:
         raise SystemExit(f'unknown regime(s): {bad}')
-    print(f'informative censoring: setting {a.setting}, N={a.N}, beta={a.beta}, '
+    print(f'informative censoring: settings {a.setting}, N={a.N}, beta={a.beta}, '
           f'{a.reps} reps, {a.workers} workers', flush=True)
     res = []
-    for name in sel:
-        print(f'\n--- {name}: {REGIMES[name][3]} ---', flush=True)
-        res.append(run(name, a.reps, a.N, a.setting, a.beta, a.workers, a.out))
+    for setting in a.setting:
+        for name in sel:
+            print(f'\n--- setting {setting} / {name}: {REGIMES[name][3]} ---',
+                  flush=True)
+            r = run(name, a.reps, a.N, setting, a.beta, a.workers, a.out)
+            r['setting'] = setting
+            res.append(r)
     print('\n=== summary ===', flush=True)
     for r in res:
-        print(f'  {r["name"]:12s} max|bias|={np.max(np.abs(r["bias"])):.4f}  '
-              f'mean CP95={np.mean(r["cov"]):.3f}', flush=True)
+        print(f'  s{r["setting"]} {r["name"]:12s} '
+              f'max|bias|={np.nanmax(np.abs(r["bias"])):.4f}  '
+              f'mean CP95={np.nanmean(r["cov"]):.3f}', flush=True)
 
 
 if __name__ == '__main__':
