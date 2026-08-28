@@ -181,7 +181,7 @@ def _coverage(true_curve, up, lo):
 
 
 def band_plot(estimates: Sequence[Estimate], out: str, *, truth, grid,
-              which: str = 'auto', scale: float = 1.0,
+              which: str = 'auto', scale=1.0,
               title: Optional[str] = None, use_median: bool = False,
               xlabel: Optional[str] = None,
               ylabel: Optional[str] = None) -> str:
@@ -197,11 +197,22 @@ def band_plot(estimates: Sequence[Estimate], out: str, *, truth, grid,
     import matplotlib.pyplot as plt
 
     grid = np.asarray(grid, dtype=float).ravel()
+    # ``scale`` may be a scalar or one factor per estimate. A per-estimate
+    # scale is what the LTM family needs: alpha and q are identified only up
+    # to alpha -> c*alpha, q -> q/c, and the rescaling that removes c differs
+    # from replication to replication unless the fits happen to be anchored at
+    # the same point.
+    scales = (np.full(len(estimates), float(scale))
+              if np.isscalar(scale)
+              else np.asarray(scale, dtype=float).ravel())
+    if scales.size != len(estimates):
+        raise ValueError(f'scale has {scales.size} entries for '
+                         f'{len(estimates)} estimates')
     est_all, up_all, lo_all = [], [], []
-    for e in estimates:
+    for e, sc in zip(estimates, scales):
         if not e.success:
             continue
-        y, lo, up = curve(e, grid, which=which, scale=scale)
+        y, lo, up = curve(e, grid, which=which, scale=sc)
         if lo is None:
             raise ValueError('band_plot needs spline SEs: run inference() '
                              '(spline_se=True for the frailty cox) first')

@@ -5,7 +5,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import minimize
 
-from ..common import augknt
+from ..common import augknt, unique_sort_index
 from .baseline_hazard_func import baseline_hazard_func
 from .objective_func import objective_func
 
@@ -41,14 +41,20 @@ def cox_rec(x, time, delta):
     beta = est_r[:p]
     theta = est_r[p:p + q]
 
-    tspan = np.concatenate([[1e-12], tau])
+    # scipy's solve_ivp requires strictly-increasing t_eval (MATLAB ode45
+    # accepts ties); deduplicate, integrate, then expand back via bin_tau.
+    # Ties in tau arise whenever the censoring law has an atom -- e.g. the
+    # paper's Setting 3 uses C = min{U(2,6), 4}, so ~50% of subjects share
+    # tau = 4. This is a no-op when tau is already strictly increasing.
+    u_tau, bin_tau = unique_sort_index(tau)
+    tspan = np.concatenate([[1e-12], u_tau])
 
     def rhs(t, y):
         return baseline_hazard_func(np.array([t]), theta, knots, k)
 
     sol = solve_ivp(rhs, (tspan[0], tspan[-1]), [0.0],
                     t_eval=tspan, method='RK45', rtol=1e-3, atol=1e-6)
-    cum_baseline = sol.y[0][1:]
+    cum_baseline = sol.y[0][1:][bin_tau]
     x_coef = np.exp(x_tau @ beta)
     temp = x_coef * cum_baseline
     return temp, beta

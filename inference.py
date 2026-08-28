@@ -162,7 +162,8 @@ def _inf_re_aft(est, data, seed, data_setting, order):
     return se_all
 
 
-def _inf_re_ltm(est, data, seed, data_setting, order):
+def _inf_re_ltm(est, data, seed, data_setting, order, resample_B=None,
+                resample_symmetrize=False):
     x, time, delta, id_vec = _unpack(data, order)
     r = est.raw
     N = int(np.unique(id_vec).size)
@@ -180,7 +181,8 @@ def _inf_re_ltm(est, data, seed, data_setting, order):
                    knots_0=r['knots_0'].ravel(), knots_q=r['knots_q'].ravel(),
                    k0=int(r['k0']), kq=int(r['kq']),
                    l0=int(r['l0']), lq=int(r['lq']))
-        fish = _re_ltm_inf(N, seed, data_setting, ks, root=tmp)
+        fish = _re_ltm_inf(N, seed, data_setting, ks, root=tmp,
+                           B=resample_B, symmetrize=resample_symmetrize)
     return np.sqrt(np.abs(np.diag(fish)))
 
 
@@ -189,7 +191,8 @@ def _inf_re_ltm(est, data, seed, data_setting, order):
 # --------------------------------------------------------------------------- #
 
 def inference(est: Estimate, data, *, seed=None, data_setting=None,
-              spline_se=True) -> Estimate:
+              spline_se=True, resample_B=None,
+              resample_symmetrize=False) -> Estimate:
     """Fill in standard errors / 95% Wald CIs on a fitted :class:`Estimate`.
 
     Parameters
@@ -207,6 +210,17 @@ def inference(est: Estimate, data, *, seed=None, data_setting=None,
         Only used by the random-effect ltm resampling, whose number of
         perturbations is setting-specific (800 for setting 1, 1000 for
         setting 2). Defaults: cox-type 1, aft-type 2, ltm 1.
+    resample_B : int or None
+        Override the number of resampling perturbations for the random-effect
+        ltm. ``None`` keeps the reference-matching default (800 for setting 1,
+        1000 for setting 2). The paper's §5.2 study uses 1500 (Setting 5) and
+        2000 (Setting 6).
+    resample_symmetrize : bool
+        Random-effect ltm only. Project the resampled derivative matrix onto
+        the symmetric cone before inverting it. The target is a Hessian and so
+        is symmetric; without this a few percent of fits return a badly
+        inflated standard error. Recommended, but off by default so the
+        reference-parity check in :mod:`ode_unify.sanity_check` keeps passing.
     spline_se : bool
         For the random-effect cox only: also compute the resampling SEs of the
         spline coefficients (needed for baseline-hazard bands; slower). The
@@ -245,7 +259,9 @@ def inference(est: Estimate, data, *, seed=None, data_setting=None,
         se_all = _inf_re_aft(est, data, seed, ds, order)
     elif key == ('ltm', True):
         ds = 1 if data_setting is None else int(data_setting)
-        se_all = _inf_re_ltm(est, data, seed, ds, order)
+        se_all = _inf_re_ltm(est, data, seed, ds, order,
+                             resample_B=resample_B,
+                             resample_symmetrize=resample_symmetrize)
     else:
         raise ValueError(f'unsupported {key}')
 

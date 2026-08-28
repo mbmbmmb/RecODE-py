@@ -127,7 +127,8 @@ def simulate(N, seed, setting=None, *, random_effect=False,
              beta=(1.0, 1.0, 1.0), rho1=0.5, r1=1.0,
              alpha=None, q=None, rate=None,
              frailty_dist='gamma', frailty_params=(2.0, 0.5),
-             censor=(2.0, 4.0), n_grid=200, ode_kw=None):
+             censor=(2.0, 4.0), censor_coef=None, censor_frailty_coef=0.0,
+             n_grid=200, ode_kw=None):
     """Simulate ``N`` recurrent-event trajectories (long format).
 
     Parameters
@@ -147,7 +148,22 @@ def simulate(N, seed, setting=None, *, random_effect=False,
         Custom closed-form intensity ``rate(t, m)`` (``m = exp(x'beta)``).
     frailty_dist, frailty_params : see :func:`frailty`.
     censor : (a, b)
-        Administrative censoring ``~ U(a, b)``.
+        Baseline administrative censoring window; ``C0 ~ U(a, b)``.
+    censor_coef : array-like or None
+        Covariate-dependent (informative) censoring. When given a length-``p``
+        vector ``gamma_c``, each subject's censoring time is rescaled
+        ``C_i = C0_i * exp(x_i' gamma_c)`` -- so the censoring distribution
+        depends on the same covariates that drive the event process. With
+        ``gamma_c = 0`` (or ``None``) this reduces to the covariate-independent
+        ``U(a, b)`` censoring. This is the "censoring depends on X" scenario
+        requested by the reviewers (conditional independence given ``x`` still
+        holds, so a consistent estimator should be unaffected).
+    censor_frailty_coef : float
+        Frailty-dependent censoring strength ``c_xi``. When non-zero, the
+        censoring time is further rescaled ``* exp(c_xi * log(xi))`` (i.e.
+        ``* xi**c_xi``). Because ``xi`` is an *unobserved* frailty, this induces
+        **truly informative** censoring that violates conditional independence
+        given ``x`` -- a stress test beyond the covariate-dependent case.
 
     Returns a dict with ``x``, ``time``, ``delta`` (1 event / 0 censoring),
     ``id`` and ``rho1``/``r1``.
@@ -167,6 +183,15 @@ def simulate(N, seed, setting=None, *, random_effect=False,
     xi = frailty(N, rng, random_effect, frailty_dist, frailty_params)
     a0, b0 = censor
     u = a0 + (b0 - a0) * rng.random(N)
+    # Informative censoring: rescale the censoring time by exp(x'gamma_c) so it
+    # depends on each subject's covariates (and optionally on the frailty xi).
+    if censor_coef is not None:
+        gc = np.asarray(censor_coef, dtype=float).reshape(-1)
+        if gc.size != p:
+            raise ValueError(f'censor_coef must have length p={p}, got {gc.size}')
+        u = u * np.exp(x @ gc)
+    if censor_frailty_coef:
+        u = u * np.power(np.maximum(xi, 1e-12), float(censor_frailty_coef))
 
     make_lam = _intensity_factory(setting, rate, alpha, q, rho1, ode_kw)
 
