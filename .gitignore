@@ -20,7 +20,7 @@ results/
 paper_setting/results/
 
 # simulate_study.py figures -- superseded by paper_setting/plots/
-plots/
+/plots/
 
 # Manuscript source and confidential referee material -- not for a public repo
 latex/
