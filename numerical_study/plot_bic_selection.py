@@ -37,43 +37,48 @@ def main(csv=None, out=None, ns=(1000, 4000)):
 
     for ax, n in zip(axes, ns):
         ax.axis('off')
-        cells, colours, rlab = [], [], []
+        cells, colours, rlab, nok = [], [], [], []
         for s, key, name, spec in ROWS:
             r = d[(d.setting == s) & (d.n == n)]
             if not len(r):
                 continue
             r = r.iloc[0]
             rlab.append(f'  {spec}   ')
-            cells.append([f'{int(r["ok"])}'] +
-                         [f'{r[KEY[c]]:.1f}' for c in COLS])
+            cells.append([f'{r[KEY[c]]:.1f}' for c in COLS])
             colours.append([KEY[c] == key for c in COLS])
+            nok.append(int(r['ok']))
         if not cells:
             continue
-        tb = ax.table(cellText=cells, colLabels=['fits'] + COLS,
+        tb = ax.table(cellText=cells, colLabels=COLS,
                       rowLabels=rlab, cellLoc='center', rowLoc='left',
                       loc='center')
         tb.auto_set_font_size(False); tb.set_fontsize(10); tb.scale(1, 1.6)
-        for j in range(len(COLS) + 1):
+        for j in range(len(COLS)):
             tb[0, j].set_facecolor('#e8e8e8')
             tb[0, j].set_text_props(weight='bold')
         for i, diag in enumerate(colours, start=1):
-            for j, on in enumerate(diag, start=1):
+            for j, on in enumerate(diag):
                 v = float(cells[i - 1][j])
                 if on:
                     tb[i, j].set_facecolor('#c9e7c9' if v >= 95 else '#e6f2d9')
                     tb[i, j].set_text_props(weight='bold')
                 elif v > 0:
                     tb[i, j].set_facecolor('#fdf0d5')
-            tb[i, 0].set_facecolor('#f5f5f5')
         ax.set_title(f'n = {n}', fontsize=11.5, weight='bold', pad=6)
+        # the convergence range moves to the caption rather than being dropped:
+        # the percentages are conditional on all four models fitting
+        ax._nok = (min(nok), max(nok))
 
     fig.suptitle('BIC model selection in the ODE family\n'
                  'rows = generating model,  columns = model selected  '
                  r'(%, 100 replications, $\alpha$ sieve $\lceil N^{1/5}\rceil+4$)',
                  fontsize=12.5)
+    rng = [a._nok for a in axes if hasattr(a, '_nok')]
+    lo = min(r[0] for r in rng) if rng else 0
+    hi = max(r[1] for r in rng) if rng else 0
     fig.text(0.5, 0.012,
-             'Shaded diagonal = correct selection. "fits" = replications that converged; '
-             'percentages are over those.\n'
+             'Shaded diagonal = correct selection. Percentages are conditional on all four '
+             f'models fitting, which held for {lo}-{hi} of the 100 replications per cell.\n'
              r'Setting 4 ($q=2/(1{+}u)$) is excluded as the ODE-Flex truth: it IS Box-Cox at '
              r'$\rho=1$, so ODE-LT contains it and is correctly chosen.',
              ha='center', fontsize=8.5, color='#333333')
