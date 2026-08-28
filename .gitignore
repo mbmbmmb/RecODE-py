@@ -15,3 +15,14 @@ results/
 .idea/
 .vscode/
 *.swp
+
+# Paper-setting Monte-Carlo output (90MB, regenerable via paper_setting/run_paper.py)
+paper_setting/results/
+
+# Manuscript source and confidential referee material -- not for a public repo
+latex/
+review/
+
+# MIMIC-III derived data: credentialed access (PhysioNet DUA), never publish
+mimic_analysis/merged_data/
+mimic_analysis/doc/

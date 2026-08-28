@@ -26,7 +26,8 @@ def _paths(root, data_setting):
     return data_dir, res_dir, res_prefix
 
 
-def inference(N, seed, data_setting, knots_setting, root=None):
+def inference(N, seed, data_setting, knots_setting, root=None, B=None,
+              symmetrize=False):
     if root is None:
         root = os.path.dirname(__file__)
     data_dir, res_dir, res_prefix = _paths(root, data_setting)
@@ -65,7 +66,9 @@ def inference(N, seed, data_setting, knots_setting, root=None):
     )
     V = (grad.T @ grad) / N
 
-    B = 800 if data_setting == 1 else 1000
+    # default matches MATLAB (800 / 1000); the paper's simulation study
+    # uses B=1500 (setting 5) and B=2000 (setting 6), passed in explicitly.
+    B = (800 if data_setting == 1 else 1000) if B is None else int(B)
     d = est_r.size
     rng = np.random.default_rng(seed)
     Z = rng.standard_normal((d, B))
@@ -87,6 +90,16 @@ def inference(N, seed, data_setting, knots_setting, root=None):
         Y[i] = gradi / np.sqrt(N)
     Z = Z[1:, :]          # drop the (fixed) first-beta row
     A = np.linalg.solve(Z @ Z.T, Z @ Y)   # (d-1, d-1)
+    if symmetrize:
+        # A estimates d(score)/d(theta), i.e. minus the pseudo-likelihood
+        # Hessian, so the population target is symmetric; the OLS estimate is
+        # not. Projecting onto the symmetric cone averages the two independent
+        # noisy estimates of each off-diagonal entry, which halves that noise
+        # and keeps inv(A) away from the near-null directions of A. Without it
+        # a few percent of replications return a wildly inflated SE (up to 200x)
+        # because the resampling noise floor swamps A's smallest singular
+        # values; see review/simulation_settings.md.
+        A = 0.5 * (A + A.T)
     # MATLAB:  X = (A')\(V/A) = inv(A.T) * V * inv(A)
     V_invA = np.linalg.solve(A.T, V.T).T        # V @ inv(A)
     X = np.linalg.solve(A.T, V_invA)            # inv(A.T) @ (V @ inv(A))

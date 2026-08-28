@@ -280,12 +280,58 @@ ode_unify/
 ├── estimator.py         # estimate / Estimate
 ├── inference.py         # inference / fit
 ├── visual.py            # curve / plot_fit / band_plot / ltm_band_plot
+├── paper_dgp.py         # paper-faithful generator (true_rate_paper / simulate_paper)
 ├── simulate_study.py    # Monte-Carlo study CLI
+├── sim_informative_censoring.py   # informative-censoring study
 ├── sanity_check.py      # parity checks
 ├── _engine/             # internal numerical kernels
 │   ├── cox/  aft/  ltm/  npmle/
 │   └── random_effect/   # frailty variants
-└── plots/               # rendered figures (.png)
+├── paper_setting/       # reproduction of the paper's simulation section
+│   ├── run_paper.py         # 15-study registry, pooled runner, plots
+│   ├── paper_values.py      # published values, transcribed
+│   ├── make_report.py       # side-by-side report generator
+│   ├── plot_informative.py  # informative-censoring figure
+│   └── plots/               # rendered figures (.png)
+└── plots/               # figures from simulate_study.py
 ```
 
-`results/` (per-replication `.npz` output) is regenerable and git-ignored.
+`results/` and `paper_setting/results/` (per-replication `.npz` output) are
+regenerable and git-ignored.
+
+## Reproducing the paper's simulation section
+
+`ode_unify/dgp.py` is the *general* generator: its covariate design is fixed and it
+defaults to `U(2,4)` censoring for every setting. `paper_dgp.py` instead pins the
+covariate distribution, the censoring window and the frailty per setting, exactly as
+specified in §5 of the paper, so the Monte-Carlo summaries are directly comparable to
+the published tables.
+
+```bash
+python -m ode_unify.paper_setting.run_paper list                     # 15 studies
+python -m ode_unify.paper_setting.run_paper run  --reps 1000 --workers 10
+python -m ode_unify.paper_setting.run_paper plot
+python -m ode_unify.paper_setting.run_paper report                   # Bias/SE/ESE/CP
+python -m ode_unify.paper_setting.make_report                        # full markdown report
+```
+
+Runs are resumable: a seed whose `.npz` already exists is skipped, so extending
+100 → 1000 replications only computes the new seeds. The runner pools every
+`(study, seed)` task into one process pool, dispatched longest-job-first, so workers
+stay busy through the tail of each study; pass `--sequential` for the older
+one-pool-per-study behaviour.
+
+### Informative censoring
+
+```bash
+python -m ode_unify.sim_informative_censoring --paper --setting 1 \
+    --N 1000 --reps 100 --beta 1 1 1 --gamma_c -0.5 -0.5 -0.5 \
+    --c_xi 1.0 --with_frailty --save_dir ode_unify/paper_setting/results/informative
+python -m ode_unify.paper_setting.plot_informative
+```
+
+Each subject's censoring time is `C_i = C0_i · exp(x_i'γ_c) · ξ_i^{c_ξ}`. With
+`γ_c ≠ 0` and `c_ξ = 0` the censoring depends on the *observed* covariates, so
+conditional independence given `x` still holds and the estimator is unaffected. With
+`c_ξ ≠ 0` it depends on the *unobserved* frailty, which genuinely violates the
+assumption. `plot_informative.py` renders the former group only.
