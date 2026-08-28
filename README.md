@@ -32,7 +32,7 @@ resampling, depending on the model.
 | `simulate_study.py` | End-to-end Monte-Carlo study CLI (run → save → plot) |
 | `sanity_check.py` | Exact-parity checks against the standalone reference modules |
 | `_engine/` | Vendored numerical kernels (objectives, MLE, inference); internal |
-| `plots/` | Rendered simulation figures (`.png`) |
+| `numerical_study/` | Simulation study, informative censoring and BIC model selection, with their figures |
 
 ---
 
@@ -251,8 +251,9 @@ Settings: `cox_setting1`, `aft_setting2`, `npmle_setting3`, `ltm_setting4`,
 for the package's uniform layout (default `legacy` reproduces the historical
 per-model pipelines bit-for-bit).
 
-The rendered figures live in [`plots/`](plots) — e.g. `cox_s1.png`,
-`aft_s2.png`, `ltm_s4_alpha.png`, `re_ltm_s1_q.png`.
+`simulate_study.py` writes its figures to a local `plots/` directory, which is
+git-ignored: it predates and is superseded by
+[`numerical_study/`](numerical_study), whose figures are tracked.
 
 ---
 
@@ -312,9 +313,9 @@ ode_unify/
 Scripts live directly in `numerical_study/`; each study keeps its own results and
 figures beside them, with the simulation study split by censoring type.
 
-`results/` and `numerical_study/results/` (per-replication `.npz` output) are
-regenerable and git-ignored, as is `plots/` from `simulate_study.py` (superseded
-by `numerical_study/plots/`).
+Per-replication `.npz` output is regenerable and git-ignored — `results/` from
+`simulate_study.py`, and the two `results/` folders under `numerical_study/`. The
+figures and the `.csv` selection summaries are tracked.
 
 ## Reproducing the paper's simulation section
 
@@ -338,13 +339,31 @@ Runs are resumable: a seed whose `.npz` already exists is skipped, so extending
 stay busy through the tail of each study; pass `--sequential` for the older
 one-pool-per-study behaviour.
 
+### BIC model selection
+
+ODE-Cox (`q ≡ 1`), ODE-AM (`α ≡ 1`) and ODE-LT (`q` specified up to scale) are
+exact nested restrictions of the ODE-Flex sieve parameterisation, so fitting all
+four under one objective makes their information criteria comparable:
+
+```bash
+python -m ode_unify.numerical_study.bic_selection --reps 100 --workers 10 \
+    --alpha-knots-extra 4 --grid 1:4000 2:4000 3:4000 7:4000
+python -m ode_unify.numerical_study.plot_bic_selection
+```
+
+`--alpha-knots-extra` widens the sieve for `log α(t)`. This matters: with the
+default `⌈N^{1/5}⌉` knots the q-spline absorbs whatever a coarse `α` cannot
+represent, which inflates the ODE-Flex-over-ODE-Cox likelihood gain and pulls
+selection toward the flexible model as `n` grows. Widening it restores 100%
+correct selection. Compare the observed gain with its degrees of freedom as a
+check that the sieve is adequate.
+
 ### Informative censoring
 
 ```bash
-python -m ode_unify.sim_informative_censoring --paper --setting 1 \
-    --N 1000 --reps 100 --beta 1 1 1 --gamma_c -0.5 -0.5 -0.5 \
-    --c_xi 1.0 --with_frailty --save_dir ode_unify/numerical_study/results/informative
-python -m ode_unify.numerical_study.plot_informative
+python -m ode_unify.numerical_study.run_informative --setting 1 2 3 4 \
+    --only random cov cov_decr --reps 1000 --workers 10
+python -m ode_unify.numerical_study.plot_informative --min-cp 0.85
 ```
 
 Each subject's censoring time is `C_i = C0_i · exp(x_i'γ_c) · ξ_i^{c_ξ}`. With
