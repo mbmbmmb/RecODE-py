@@ -76,9 +76,10 @@ def main(csv=None, out=None, ns=(1000, 4000)):
     rng = [a._nok for a in axes if hasattr(a, '_nok')]
     lo = min(r[0] for r in rng) if rng else 0
     hi = max(r[1] for r in rng) if rng else 0
+    span = f'all {hi}' if lo == hi else f'{lo}-{hi}'
     fig.text(0.5, 0.012,
              'Shaded diagonal = correct selection. Percentages are conditional on all four '
-             f'models fitting, which held for {lo}-{hi} of the 100 replications per cell.\n'
+             f'models fitting, which held for {span} of the 100 replications per cell.\n'
              r'Setting 4 ($q=2/(1{+}u)$) is excluded as the ODE-Flex truth: it IS Box-Cox at '
              r'$\rho=1$, so ODE-LT contains it and is correctly chosen.',
              ha='center', fontsize=8.5, color='#333333')

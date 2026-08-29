@@ -43,11 +43,20 @@ def objective_func_sieve(r, x, time, delta, beta,
 
     sol_a = solve_ode(rhs_alpha, (tspan[0], tspan[-1]), [0.0],
                       t_eval=tspan, method='RK45', rtol=1e-6, atol=1e-7)
-    int_alpha = sol_a.y[0][1:][bin_time]
+    # exp(.) > 0 makes the true integral non-decreasing and non-negative, but
+    # at a trial alpha that blows it up to ~1e166 RK45 can still return a tiny
+    # negative value at the earliest time. That sign then puts t_eval outside
+    # t_span in the transformed-time solve below and raises. Clamping is exact
+    # for the true solution and turns the crash into a finite objective.
+    int_alpha = np.maximum(sol_a.y[0][1:][bin_time], 0.0)
     time_transform = int_alpha * multi_coef
 
     u_t, bin_t = unique_sort_index(time_transform)
-    tspan_t = np.concatenate([[0.0], u_t])
+    # Prepend the origin only when it is not already the first evaluation
+    # point: clamping int_alpha at 0 can make the earliest transformed time
+    # exactly 0, and a duplicated 0.0 makes t_eval non-increasing.
+    _skip = 1 if u_t[0] > 0.0 else 0
+    tspan_t = np.concatenate([[0.0], u_t]) if _skip else u_t
 
     def rhs_fwd(t, y):
         return forward_odesystem_func(y, theta, knots_q, kq)
@@ -55,7 +64,7 @@ def objective_func_sieve(r, x, time, delta, beta,
     sol_f = solve_ode(rhs_fwd, (tspan_t[0], tspan_t[-1]),
                       np.zeros(q_q + 1), t_eval=tspan_t, method='RK45',
                       rtol=1e-6, atol=1e-7)
-    res = sol_f.y[:, 1:].T
+    res = sol_f.y[:, _skip:].T
     cum_hazard = res[bin_t, 0]
     dd_theta = res[bin_t, 1:]
 

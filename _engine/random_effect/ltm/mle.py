@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.optimize import minimize, LinearConstraint
 
-from ...common import augknt, spcol
+from ...common import augknt, spcol, solve_sieve_step
 from .cox_rec import cox_rec
 from .objective_func_sieve import objective_func_sieve
 from .objective_func_beta import objective_func_beta
@@ -74,6 +74,7 @@ def mle(x, time, delta, knots_setting):
     beq_q = 0.0
 
     succ_ind = 1
+    use_trust = False
     try:
         for i in range(100):
             sieve = np.concatenate([theta, alpha])
@@ -84,10 +85,10 @@ def mle(x, time, delta, knots_setting):
                 )
 
             constraint = LinearConstraint(Aeq_q.reshape(1, -1), beq_q, beq_q)
-            res = minimize(
-                fun_theta, sieve, jac=True, method='SLSQP',
-                constraints=[constraint],
-                options={'maxiter': 100, 'ftol': 5e-4},
+            # SLSQP first (fast); fall back to trust-constr for this and every
+            # later step of the fit if its line search breaks down numerically.
+            res, use_trust = solve_sieve_step(
+                fun_theta, sieve, constraint, prefer_trust=use_trust,
             )
             est_sieve = res.x
             step_sieve = float(np.max(np.abs(est_sieve - sieve)))

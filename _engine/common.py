@@ -171,8 +171,18 @@ def ode_guard(fn):
     where a silent sentinel would be wrong, so those re-raise.
     """
     import functools
+    import inspect
 
     import os as _os
+
+    # Resolve where ``ci`` sits in this objective's own signature. Guessing a
+    # fixed positional index is wrong: objective_func_sieve takes ci 10th but
+    # objective_func_beta takes it 11th (it has both theta and alpha), so a
+    # hard-coded args[9] reads kq there -- a non-zero int, i.e. always "ci=True"
+    # -- and the guard re-raises instead of guarding. The random-effect
+    # variants have no ci parameter at all.
+    _params = list(inspect.signature(fn).parameters)
+    _ci_pos = _params.index('ci') - 1 if 'ci' in _params else None
 
     @functools.wraps(fn)
     def wrapper(r, *args, **kw):
@@ -181,7 +191,10 @@ def ode_guard(fn):
         except ODEIntegrationError:
             if _os.environ.get('ODE_GUARD_DISABLE'):
                 raise
-            ci = kw.get('ci', args[9] if len(args) > 9 else False)
+            if _ci_pos is not None and len(args) > _ci_pos:
+                ci = kw.get('ci', args[_ci_pos])
+            else:
+                ci = kw.get('ci', False)
             if ci:
                 raise
             # Soft barrier rather than a flat penalty. A zero gradient tells the
@@ -195,3 +208,87 @@ def ode_guard(fn):
             return (_ODE_FAIL_OBJECTIVE * (1.0 + float(r @ r)),
                     _ODE_FAIL_OBJECTIVE * 2.0 * r)
     return wrapper
+
+
+# --------------------------------------------------------------------------- #
+# constrained sieve step: fast solver first, robust solver on failure
+# --------------------------------------------------------------------------- #
+
+#: Box applied to the sieve coefficients under SLSQP. These are log-scale
+#: B-spline coefficients, so the box is on log alpha / log q. Across settings
+#: 1-4 and 7 (frailty and not, n = 1000 and 4000, 100 fits) the largest
+#: coefficient reached at any optimum was 8.6, so +/-25 leaves the attainable
+#: optimum untouched -- fits are unchanged to six decimals -- while ruling out
+#: the |coef| ~ 1e3 line-search probes at which exp(B @ coef) overflows.
+SIEVE_COEF_BOUND = 25.0
+
+#: SLSQP status 8, "positive directional derivative for linesearch": the line
+#: search broke down. Status 9 (iteration limit) is not a numerical failure and
+#: does not trigger the fallback.
+_SLSQP_LINESEARCH_BREAKDOWN = 8
+
+
+def solve_sieve_step(fun, x0, constraint, prefer_trust=False,
+                     slsqp_options=None, trust_options=None):
+    """Minimise ``fun`` under one linear equality ``constraint``.
+
+    Tries SLSQP first: it reaches the same optimum roughly 15-25x cheaper than
+    the alternative. Its line search, however, carries no step-length guarantee
+    and can probe sieve coefficients of order 1e3, where ``exp(B @ coef)``
+    overflows and the objective raises rather than returning a large number.
+
+    When that happens the step is redone from the same starting point with
+    ``trust-constr``, whose trust region bounds every trial point to a
+    neighbourhood of the current iterate by construction, with a conservative
+    initial radius. Measured on the known failure samples, trust-constr never
+    probed a coefficient above 5.1 and never failed, where SLSQP repeatedly hit
+    the box.
+
+    ``fun`` must return ``(value, gradient)``. Returns ``(res, used_trust)``;
+    the caller is expected to pass ``prefer_trust=used_trust`` on subsequent
+    steps of the same fit, so that a fit which has needed the robust solver
+    once does not pay for a failing SLSQP attempt at every later iteration.
+    """
+    from scipy.optimize import Bounds, minimize
+
+    # accept a single constraint, a list, or none at all
+    if constraint is None:
+        cons = []
+    elif isinstance(constraint, (list, tuple)):
+        cons = list(constraint)
+    else:
+        cons = [constraint]
+
+    trust_opts = {'maxiter': 300, 'gtol': 1e-8, 'xtol': 1e-10,
+                  'initial_tr_radius': 0.1}
+    if trust_options:
+        trust_opts.update(trust_options)
+
+    def _trust():
+        # No box here: bounding trust-constr makes it thrash (7000+ objective
+        # evaluations against ~300 unbounded) for no gain in the optimum.
+        return minimize(fun, x0, jac=True, method='trust-constr',
+                        constraints=cons, options=trust_opts)
+
+    if prefer_trust:
+        return _trust(), True
+
+    slsqp_opts = {'maxiter': 100, 'ftol': 5e-4}
+    if slsqp_options:
+        slsqp_opts.update(slsqp_options)
+    try:
+        res = minimize(fun, x0, jac=True, method='SLSQP',
+                       constraints=cons,
+                       bounds=Bounds(-SIEVE_COEF_BOUND, SIEVE_COEF_BOUND),
+                       options=slsqp_opts)
+        ok = (np.all(np.isfinite(res.x))
+              and np.isfinite(res.fun)
+              and res.status != _SLSQP_LINESEARCH_BREAKDOWN)
+        if ok:
+            return res, False
+    except ODEIntegrationError:
+        pass
+    except ValueError:
+        # solve_ivp rejects t_eval built from an overflowed time transform.
+        pass
+    return _trust(), True
