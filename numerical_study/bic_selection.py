@@ -25,7 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from RecurrentODE_py.common import augknt, spcol                       # noqa: E402
+from RecurrentODE_py.common import augknt, spcol, solve_sieve_step                       # noqa: E402
 from RecurrentODE_py.ltm.cox_rec import cox_rec                        # noqa: E402
 from RecurrentODE_py.ltm.objective_func_sieve import objective_func_sieve as OFS  # noqa: E402
 from RecurrentODE_py.ltm.objective_func_beta import objective_func_beta as OFB    # noqa: E402
@@ -68,17 +68,20 @@ def _one(args):
             theta_lt = np.linalg.lstsq(spcol(knots_q, kq, ug),
                                        -np.log1p(RHO * ug), rcond=None)[0]
 
-            def fit(ft, fa, theta0=None, iters=60, scale_free=False):
+            def fit(ft, fa, theta0=None, iters=60, scale_free=False,
+                    beta0=None):
                 # scale_free: theta = theta0 + c*1 with c estimated. B-splines
                 # form a partition of unity, so adding c to every coefficient
                 # shifts log q by c. The LTM identifies (alpha, q) only up to
                 # alpha -> k*alpha, q -> q/k, and alpha is anchored at
                 # alpha(2)=1, so a specified q needs this one free constant --
                 # without it the candidate is fitted on the wrong scale.
-                beta = (binit / binit[0])[1:].copy()
+                beta = ((binit / binit[0])[1:].copy() if beta0 is None
+                        else np.asarray(beta0, dtype=float).copy())
                 theta = np.zeros(q_q) if theta0 is None else theta0.copy()
                 alpha = np.zeros(q_0)
                 cc = 0.0
+                use_trust = False      # sticky once the fallback is needed
                 for _ in range(iters):
                     bp, tp, ap = beta.copy(), theta.copy(), alpha.copy()
 
@@ -109,8 +112,13 @@ def _one(args):
                     elif fa:
                         row = np.zeros(v0.size); row[(q_q if ft else 0):] = Aeq
                         cons = [LinearConstraint(row.reshape(1, -1), 0.0, 0.0)]
-                    r = minimize(f, v0, jac=True, method='SLSQP', constraints=cons,
-                                 options={'maxiter': 120, 'ftol': 1e-8})
+                    # ftol=1e-8 makes SLSQP's line search probe far more
+                    # aggressively than the library default, which is where the
+                    # BIC-study failures were concentrated; fall back to
+                    # trust-constr for the rest of this fit when it breaks down.
+                    r, use_trust = solve_sieve_step(
+                        f, v0, cons, prefer_trust=use_trust,
+                        slsqp_options={'maxiter': 120, 'ftol': 1e-8})
                     if scale_free:
                         cc = r.x[0]; theta = theta0 + cc; alpha = r.x[1:]
                     else:
@@ -126,17 +134,39 @@ def _one(args):
                         break
                 v, _ = OFS(np.concatenate([theta, alpha]), x, t, delta, idv, beta,
                            knots_0, knots_q, k0, kq)
-                return float(v)
+                return float(v), beta
 
+            # Fit ODE-Cox first, retrying from alternative starts if it fails,
+            # then warm-start every other candidate from its beta. Cox is the
+            # cheapest and best-conditioned member of the family (theta = 0
+            # removes the q-spline entirely), so it converges where the others
+            # struggle, and its beta is a far better starting point than the
+            # cox_rec initialiser for the models that do struggle.
             out = {'_m': m}
+            beta_cox = None
+            _starts = ((None,) if os.environ.get('WARMSTART_DISABLE')
+                       else (None, np.zeros(p - 1), (binit / binit[0])[1:] * 0.5))
+            for b0 in _starts:
+                try:
+                    v, beta_cox = fit(False, True, None, beta0=b0)
+                    out['Cox'] = (v, (p - 1) + q_0)
+                    break
+                except Exception:                            # noqa: BLE001
+                    beta_cox = None
+            if beta_cox is None:
+                return setting, N, seed, None                # Cox unrecoverable
+
             for nm, ft, fa, th0, npar, sf in [
-                    ('Cox',  False, True,  None,      (p - 1) + q_0,        False),
                     ('AM',   True,  False, None,      (p - 1) + q_q,        False),
                     ('LT',   False, True,  theta_lt,  (p - 1) + q_0 + 1,    True),
                     ('Flex', True,  True,  None,      (p - 1) + q_q + q_0,  False)]:
-                out[nm] = (fit(ft, fa, th0, scale_free=sf), npar)
+                _b0 = None if os.environ.get('WARMSTART_DISABLE') else beta_cox
+                v, _ = fit(ft, fa, th0, scale_free=sf, beta0=_b0)
+                out[nm] = (v, npar)
         return setting, N, seed, out
     except Exception:                                        # noqa: BLE001
+        if os.environ.get('BIC_RAISE'):                      # diagnostics
+            raise
         return setting, N, seed, None
 
 

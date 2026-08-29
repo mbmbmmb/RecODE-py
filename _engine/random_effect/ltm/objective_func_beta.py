@@ -38,18 +38,27 @@ def objective_func_beta(r, x, time, delta, theta, alpha,
 
     sol_a = solve_ode(rhs_a, (tspan[0], tspan[-1]), [0.0],
                       t_eval=tspan, method='RK45', rtol=1e-9, atol=1e-9)
-    int_alpha = sol_a.y[0][1:][bin_time]
+    # exp(.) > 0 makes the true integral non-decreasing and non-negative, but
+    # at a trial alpha that blows it up to ~1e166 RK45 can still return a tiny
+    # negative value at the earliest time. That sign then puts t_eval outside
+    # t_span in the transformed-time solve below and raises. Clamping is exact
+    # for the true solution and turns the crash into a finite objective.
+    int_alpha = np.maximum(sol_a.y[0][1:][bin_time], 0.0)
     time_transform = int_alpha * multi_coef
 
     u_t, bin_t = unique_sort_index(time_transform)
-    tspan_t = np.concatenate([[0.0], u_t])
+    # Prepend the origin only when it is not already the first evaluation
+    # point: clamping int_alpha at 0 can make the earliest transformed time
+    # exactly 0, and a duplicated 0.0 makes t_eval non-increasing.
+    _skip = 1 if u_t[0] > 0.0 else 0
+    tspan_t = np.concatenate([[0.0], u_t]) if _skip else u_t
 
     def rhs_c(t, y):
         return hazard_ode_func(y, theta, knots_q, kq)
 
     sol_c = solve_ode(rhs_c, (tspan_t[0], tspan_t[-1]), [0.0],
                       t_eval=tspan_t, method='RK45', rtol=1e-6, atol=1e-7)
-    cum_hazard = sol_c.y[0][1:][bin_t]
+    cum_hazard = sol_c.y[0][_skip:][bin_t]
 
     u_c, bin_c = unique_sort_index(cum_hazard)
     Bq_u, dBq_u = spcol_deriv(knots_q, kq, u_c)
