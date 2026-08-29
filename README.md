@@ -33,6 +33,7 @@ resampling, depending on the model.
 | `sanity_check.py` | Exact-parity checks against the standalone reference modules |
 | `_engine/` | Vendored numerical kernels (objectives, MLE, inference); internal |
 | `numerical_study/` | Simulation study, informative censoring and BIC model selection, with their figures |
+| `tests/` | Regression tests for the solver cascade (`python tests/test_solve_sieve_step.py`) |
 
 ---
 
@@ -288,6 +289,7 @@ ode_unify/
 ├── _engine/             # internal numerical kernels
 │   ├── cox/  aft/  ltm/  npmle/
 │   └── random_effect/   # frailty variants
+├── tests/               # solver-cascade regression tests (no pytest required)
 └── numerical_study/     # all numerical work; scripts at the top level
     ├── run_paper.py             # 15-study registry, pooled runner, plots
     ├── run_informative.py       # informative-censoring study (parallel)
