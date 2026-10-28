@@ -1,7 +1,7 @@
 """Simulation study: covariate-dependent (informative) censoring.
 
-Addresses the reviewers' request (Review 2, comment 2; Review 1 & 2 on
-informative censoring) to go beyond covariate-independent U(a,b) censoring.
+Extends the covariate-independent U(a,b) censoring of the paper's simulations to
+censoring that depends on the covariates or on an unobserved frailty.
 
 Censoring regimes on the same Cox event process (setting 1, lambda0(t)=t^2+1,
 beta=(b,b,b)); each subject's censoring time is

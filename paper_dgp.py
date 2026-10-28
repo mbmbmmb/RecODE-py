@@ -52,6 +52,54 @@ CUSTOM_FUNCS = {
     7: dict(alpha=lambda t: np.asarray(t, dtype=float) + 1.0,
             q=lambda u: 1.0 + 0.7 * np.sin(1.5 * np.asarray(u, dtype=float)),
             desc='alpha(t)=t+1, q(u)=1+0.7 sin(1.5u)  (non-monotone)'),
+    # Both functional parameters carry a square-root term, so log alpha and log q each
+    # have unbounded derivative at the origin. A spline with very few knots cannot match
+    # that, which is the regime in which the knot count should start to matter.
+    8: dict(alpha=lambda t: 1.0 + np.sqrt(np.maximum(np.asarray(t, dtype=float), 0.0))
+                            + np.asarray(t, dtype=float) ** 2,
+            q=lambda u: 1.0 / (1.0 + np.sqrt(np.maximum(
+                np.asarray(u, dtype=float), 0.0))),
+            desc='alpha(t)=1+sqrt(t)+t^2, q(u)=1/(1+sqrt(u))'),
+    # Single-functional-parameter settings for the knot-selection study. Each frees
+    # exactly one of alpha, q, so that BIC and the estimation error refer to the same
+    # object; a simple and a complex version of each shows that the knot count required
+    # depends on the complexity of the truth.
+    9:  dict(alpha=lambda t: 1.0 + np.sqrt(np.maximum(np.asarray(t, float), 0.0))
+                             + np.asarray(t, float) ** 2,
+             q=lambda u: np.ones_like(np.asarray(u, float)),
+             desc='Cox-type, complex: alpha=1+sqrt(t)+t^2, q=1'),
+    10: dict(alpha=lambda t: 1.0 + np.asarray(t, float),
+             q=lambda u: np.ones_like(np.asarray(u, float)),
+             desc='Cox-type, simple: alpha=1+t, q=1'),
+    11: dict(alpha=lambda t: np.ones_like(np.asarray(t, float)),
+             q=lambda u: 1.0 / (1.0 + np.sqrt(np.maximum(np.asarray(u, float), 0.0))),
+             desc='AM-type, complex: alpha=1, q=1/(1+sqrt(u))'),
+    12: dict(alpha=lambda t: np.ones_like(np.asarray(t, float)),
+             q=lambda u: 1.0 / (1.0 + np.asarray(u, float)),
+             desc='AM-type, simple: alpha=1, q=1/(1+u)'),
+    # AM-type, oscillatory: q is bounded in [0.3, 1.7] and non-monotone, with period
+    # 2*pi/1.5 = 4.19 in u. Under alpha == 1 growth is linear (mu <= 1.7*exp(x'b)*t),
+    # unlike q = 1+u+sin(u), which is self-exciting (mu' ~ mu) and reaches ~9e5 events
+    # per subject by t = 3 -- not simulable over this design.
+    13: dict(alpha=lambda t: np.ones_like(np.asarray(t, float)),
+             q=lambda u: 1.0 + 0.7 * np.sin(1.5 * np.asarray(u, float)),
+             desc='AM-type, oscillatory: alpha=1, q=1+0.7 sin(1.5u)'),
+    # AM-type, mild perturbation of setting 12: the monotone base 1/(1+u) plus a small
+    # oscillation. Absolute amplitude is only 0.1, but the base decays, so in LOG space
+    # (which is what the sieve fits) the wiggle reaches +-0.5 by u = 3. q > 0 only for
+    # u < 11.12, which the realised mu must stay below.
+    14: dict(alpha=lambda t: np.ones_like(np.asarray(t, float)),
+             q=lambda u: 1.0 / (1.0 + np.asarray(u, float))
+                         + 0.1 * np.sin(1.5 * np.asarray(u, float)),
+             desc='AM-type, perturbed: alpha=1, q=1/(1+u)+0.1 sin(1.5u)'),
+    # AM-type, oscillation on a decaying envelope: q = (1+0.7 sin(1.5u))/(1+u).
+    # The numerator stays in [0.3, 1.7] so q > 0 everywhere (unlike setting 14, which
+    # turns negative past u = 11.1). In log space this is setting 13's full oscillation
+    # (amplitude 1.73) minus log(1+u) -- strong structure, not a mild perturbation.
+    15: dict(alpha=lambda t: np.ones_like(np.asarray(t, float)),
+             q=lambda u: (1.0 + 0.7 * np.sin(1.5 * np.asarray(u, float)))
+                         / (1.0 + np.asarray(u, float)),
+             desc='AM-type, damped oscillation: alpha=1, q=(1+0.7 sin(1.5u))/(1+u)'),
 }
 
 
@@ -115,6 +163,31 @@ PAPER_DESIGN = {
     6: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
             random_effect=True, n_paper=2000,
             desc='Gamma frailty, AFT-type: alpha=1, q=2/(t+1)'),
+    9: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000, desc='Cox-type complex'),
+    10: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000, desc='Cox-type simple'),
+    11: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000, desc='AM-type complex'),
+    12: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000, desc='AM-type simple'),
+    13: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000, desc='AM-type increasing'),
+    14: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000, desc='AM-type perturbed'),
+    15: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000, desc='AM-type damped oscillation'),
+    9: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000, desc='Cox-type complex'),
+    10: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000, desc='Cox-type simple'),
+    11: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000, desc='AM-type complex'),
+    12: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000, desc='AM-type simple'),
+    8: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
+            random_effect=False, n_paper=1000,
+            desc='alpha=1+sqrt(t)+t^2, q=1/(1+sqrt(u))'),
     7: dict(cov='normal', sd=0.5, trunc=4.0, censor=('unif', 1.0, 3.0),
             random_effect=False, n_paper=1000,
             desc='non-monotone q: alpha=t+1, q=1+0.7 sin(1.5 u)'),

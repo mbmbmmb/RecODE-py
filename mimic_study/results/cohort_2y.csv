@@ -1,0 +1,2 @@
+patients,readmissions,horizon_days,spline_order,intervals,anchor_rescaling_c0,alpha_anchor_day,band_draws,band_seed,mu_c_q95
+35626,6949,730.0,3,5,0.2645295451985299,137.14305555555555,8000,1,0.41912671468663826

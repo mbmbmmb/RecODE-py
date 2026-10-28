@@ -25,10 +25,10 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from RecurrentODE_py.common import augknt, spcol, solve_sieve_step                       # noqa: E402
-from RecurrentODE_py.ltm.cox_rec import cox_rec                        # noqa: E402
-from RecurrentODE_py.ltm.objective_func_sieve import objective_func_sieve as OFS  # noqa: E402
-from RecurrentODE_py.ltm.objective_func_beta import objective_func_beta as OFB    # noqa: E402
+from ode_unify._engine.common import augknt, spcol, solve_sieve_step                       # noqa: E402
+from ode_unify._engine.ltm.cox_rec import cox_rec                        # noqa: E402
+from ode_unify._engine.ltm.objective_func_sieve import objective_func_sieve as OFS  # noqa: E402
+from ode_unify._engine.ltm.objective_func_beta import objective_func_beta as OFB    # noqa: E402
 from ode_unify.paper_dgp import simulate_paper                         # noqa: E402
 
 TRUTH = {1: 'Cox', 2: 'AM', 3: 'LT', 4: 'Flex', 7: 'Flex'}
@@ -109,8 +109,15 @@ def _one(args):
                     if scale_free:
                         row = np.zeros(v0.size); row[1:] = Aeq
                         cons = [LinearConstraint(row.reshape(1, -1), 0.0, 0.0)]
-                    elif fa:
-                        row = np.zeros(v0.size); row[(q_q if ft else 0):] = Aeq
+                    elif ft and fa:
+                        # ONLY ODE-Flex. The alpha(anchor)=1 constraint pins the
+                        # scale freedom alpha -> k*alpha, q -> q/k, which exists
+                        # only when BOTH functional parameters are free. Under
+                        # ODE-Cox (q == 1) alpha is already identified, so the
+                        # constraint would delete a real degree of freedom and
+                        # bias alpha-hat upward. (ODE-LT takes the scale_free
+                        # branch above, where a free c makes it legitimate.)
+                        row = np.zeros(v0.size); row[q_q:] = Aeq
                         cons = [LinearConstraint(row.reshape(1, -1), 0.0, 0.0)]
                     # ftol=1e-8 makes SLSQP's line search probe far more
                     # aggressively than the library default, which is where the

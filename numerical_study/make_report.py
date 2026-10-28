@@ -329,7 +329,7 @@ estimated standard errors.
 
 ## 6. Informative censoring (beyond the paper)
 
-Reviewer-requested extension, not present in the current `main.tex`. Each
+Each
 subject's censoring time is
 
 ```
@@ -486,7 +486,7 @@ reproduced, since it is a comparison against those same external methods.
 ## 10. Reproducing this report
 
 ```bash
-cd /Users/bomeng/Desktop/research/review/jmlr/code
+cd <folder containing ode_unify>
 
 python3 -m ode_unify.numerical_study.run_paper list
 python3 -m ode_unify.numerical_study.run_paper run  --reps 100 --workers 10

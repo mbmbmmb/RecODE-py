@@ -2,6 +2,15 @@
 
 **A unified ODE toolkit for recurrent-event survival models.**
 
+This repository contains the Python implementation of the methods in
+
+> Bo Meng, Weijing Tang, Gongjun Xu and Ji Zhu. *Recurrent Event Analysis with Ordinary
+> Differential Equations.* Submitted to the Journal of Machine Learning Research.
+
+together with the code and saved results that reproduce every simulation table and
+figure of the paper and its Supplementary Material, and the real-data analysis of
+MIMIC-III (Section 6). See [Reproducing the paper](#reproducing-the-paper).
+
 `ode_unify` provides *one* data generator, *one* estimator, and *one* inference
 routine covering the whole RecurrentODE model family — Cox, AFT, NPMLE, and
 linear-transformation (LTM) models, each with an optional gamma frailty
@@ -47,10 +56,11 @@ The package is named `ode_unify`; import it from the directory that *contains*
 the clone (i.e. clone as `.../<parent>/ode_unify`), or add that parent to
 `PYTHONPATH`.
 
-**Requirements:** Python ≥ 3.9, `numpy`, `scipy`, `matplotlib`.
+**Requirements:** Python ≥ 3.9 and the packages in `requirements.txt`
+(`numpy`, `scipy`, `pandas`, `matplotlib`).
 
 ```bash
-pip install numpy scipy matplotlib
+pip install -r requirements.txt
 ```
 
 ---
@@ -282,94 +292,61 @@ ode_unify/
 ├── estimator.py         # estimate / Estimate
 ├── inference.py         # inference / fit
 ├── visual.py            # curve / plot_fit / band_plot / ltm_band_plot
-├── paper_dgp.py         # paper-faithful generator (true_rate_paper / simulate_paper)
+├── paper_dgp.py         # generator for the settings of the paper (simulate_paper)
 ├── simulate_study.py    # Monte-Carlo study CLI
-├── sim_informative_censoring.py   # informative-censoring study
+├── sim_informative_censoring.py   # informative-censoring generator
 ├── sanity_check.py      # parity checks
-├── _engine/             # internal numerical kernels
+├── _engine/             # numerical kernels (objectives, ODE solves, inference)
 │   ├── cox/  aft/  ltm/  npmle/
 │   └── random_effect/   # frailty variants
 ├── tests/               # solver-cascade regression tests (no pytest required)
-└── numerical_study/     # all numerical work; scripts at the top level
-    ├── run_paper.py             # 15-study registry, pooled runner, plots
-    ├── run_informative.py       # informative-censoring study (parallel)
-    ├── bic_selection.py         # BIC model-selection study
-    ├── paper_values.py          # published values, transcribed
-    ├── make_report.py           # side-by-side report generator
-    ├── plot_informative.py      # informative-censoring figure
-    ├── plot_bic_selection.py    # model-selection figure
-    ├── simulation_study/        # reproduction of the paper's Section 5,
-    │   │                        # split by censoring type
-    │   ├── random_censoring/        # C ~ U(a,b), the paper's own settings
-    │   │   ├── results/                 # per-replication .npz (git-ignored)
-    │   │   ├── cox/  am/  ltm/          # figures, by model family
-    │   │   └── random_effect/{cox,am,ltm}/
-    │   └── informative_censoring/   # C depending on x, and on the frailty
-    │       ├── results/                 # per-regime .npz (git-ignored)
-    │       └── informative_censoring.png
-    └── bic_model_selection/
-        ├── results/                 # selection rates (.csv)
-        └── bic_model_selection.png
+├── numerical_study/     # simulation studies of Section 5 and Supplement D
+│   ├── tables/                  # every simulation table, rebuilt by make_tables.py
+│   ├── simulation_study/        # Sections 5.1-5.3 (figures; .npz results git-ignored)
+│   └── bic_model_selection/     # Sections 5.4-5.5 and Supplement D
+│       ├── results/                 # saved results behind the tables (.csv, .npz)
+│       ├── knot_curves_all_settings.png   # Figure S1
+│       └── knot_placement.png             # Figure S2
+└── mimic_study/         # real-data analysis of Section 6 (see mimic_study/README.md)
+    └── results/                 # aggregate results and Figure 5
 ```
 
-Scripts live directly in `numerical_study/`; each study keeps its own results and
-figures beside them, with the simulation study split by censoring type.
+## Reproducing the paper
 
-Per-replication `.npz` output is regenerable and git-ignored — `results/` from
-`simulate_study.py`, and the two `results/` folders under `numerical_study/`. The
-figures and the `.csv` selection summaries are tracked.
+All commands are run from the folder that contains the script. Saved results are
+included for every table, so `make_tables.py` rebuilds the tables without refitting;
+the commands below regenerate the saved results themselves.
 
-## Reproducing the paper's simulation section
+### Simulation studies (`numerical_study/`)
 
-`ode_unify/dgp.py` is the *general* generator: its covariate design is fixed and it
-defaults to `U(2,4)` censoring for every setting. `paper_dgp.py` instead pins the
-covariate distribution, the censoring window and the frailty per setting, exactly as
-specified in §5 of the paper, so the Monte-Carlo summaries are directly comparable to
-the published tables.
+| Paper | Script | Saved results |
+|---|---|---|
+| Tables 2-4, Figures 1-4 (Sections 5.1-5.2) | `run_paper.py run --reps 1000`, then `run_paper.py report` / `plot` | `simulation_study/random_censoring/results/` (git-ignored, regenerable) |
+| Table 5 (Section 5.3), Table S5 (Supplement D.5) | `run_informative.py --setting 1 2 3 4 --only random cov cov_decr --reps 1000`; `run_informative.py --only random_fr frailty_inf --reps 1000` | `simulation_study/informative_censoring/results/` (git-ignored); `tables/table_5_*.csv`, `tables/table_S5_*.csv` |
+| Table 6 (Section 5.4), Supplement D.4 | `lr_bootstrap.py --reps 300 --grid 1:1000 3:1000 7:1000 --out bic_model_selection/results/lr_bootstrap.csv`; `lr_bootstrap.py --reps 200 --grid 1:2000 7:2000 1:4000 7:4000 --out bic_model_selection/results/lr_settings_table.csv` | `lr_bootstrap.csv`, `lr_settings_table.csv` |
+| Table 7 (Section 5.5) | `bic_selection_quantile.py --reps 100 --grid 1:2000 2:2000 3:2000 7:2000 --out bic_model_selection/results/bic_selection_q17_n2000.csv` | `bic_selection_q17_n2000*.csv` |
+| Supplement D.3 (equally spaced knots) | `bic_selection.py --reps 100 --grid 1:2000 2:2000 3:2000 7:2000 --out bic_model_selection/results/bic_selection_n2000.csv` | `bic_selection_n2000*.csv` |
+| Table S1, Figure S1 | `knot_single.py --reps 20 --n 2000 --settings 9 10 11 12 --tag single`; `knot_single.py --reps 20 --n 2000 --settings 11 12 --tag single_noanchor`; `knot_setting4.py --reps 30 --n 2000 --tag s4_fixed`; then `plot_knot_sensitivity.py` | `knot_single*.{csv,npz}`, `knot_s4_fixed*.{csv,npz}` |
+| Table S2 | `knot_single.py --reps 5 --n 1000 --settings 9 10 11 12 --tag n1000`; `knot_single.py --reps 20 --n 2000 --settings 13 --tag s13` (likewise 14, 15); then `aic_bic_knots.py` | `knot_n1000.csv`, `knot_s13.csv`, `knot_s14.csv`, `knot_s15.csv` |
+| Tables S3-S4, Figure S2 | `knot_placement.py --reps 40 --n 1000 --p P --out bic_model_selection/results/place_pP.csv` for P in 0.10 0.14 0.20 0.25 0.30; then `bic_model_selection/plot_knot_placement.py` | `place_p*.csv` |
 
 ```bash
-python -m ode_unify.numerical_study.run_paper list                     # 15 studies
-python -m ode_unify.numerical_study.run_paper run  --reps 1000 --workers 10
-python -m ode_unify.numerical_study.run_paper plot
-python -m ode_unify.numerical_study.run_paper report                   # Bias/SE/ESE/CP
-python -m ode_unify.numerical_study.make_report                        # full markdown report
+cd numerical_study
+python make_tables.py       # Tables 5-7, S1, S3-S5 and the Supplement D.3/D.4 numbers -> tables/
+python aic_bic_knots.py     # Table S2 -> tables/
 ```
 
-Runs are resumable: a seed whose `.npz` already exists is skipped, so extending
-100 → 1000 replications only computes the new seeds. The runner pools every
-`(study, seed)` task into one process pool, dispatched longest-job-first, so workers
-stay busy through the tail of each study; pass `--sequential` for the older
-one-pool-per-study behaviour.
+The settings are defined in `paper_dgp.py`: Settings 1-6 are those of Section 5,
+Setting 7 is the general model with `alpha(t) = t + 1` and `q(u) = 1 + 0.7 sin(1.5u)`
+used for the power study and model selection, and Settings 9-15 are the single-function
+settings of the knot study. All scripts accept `--workers` for parallel runs.
 
-### BIC model selection
+### Real-data analysis (`mimic_study/`)
 
-ODE-Cox (`q ≡ 1`), ODE-AM (`α ≡ 1`) and ODE-LT (`q` specified up to scale) are
-exact nested restrictions of the ODE-Flex sieve parameterisation, so fitting all
-four under one objective makes their information criteria comparable:
+The MIMIC-III data require credentialed access through PhysioNet, so the repository
+contains the full processing and fitting pipeline and the aggregate results, but no
+patient-level data. See [`mimic_study/README.md`](mimic_study/README.md).
 
-```bash
-python -m ode_unify.numerical_study.bic_selection --reps 100 --workers 10 \
-    --alpha-knots-extra 4 --grid 1:4000 2:4000 3:4000 7:4000
-python -m ode_unify.numerical_study.plot_bic_selection
-```
+## Citation
 
-`--alpha-knots-extra` widens the sieve for `log α(t)`. This matters: with the
-default `⌈N^{1/5}⌉` knots the q-spline absorbs whatever a coarse `α` cannot
-represent, which inflates the ODE-Flex-over-ODE-Cox likelihood gain and pulls
-selection toward the flexible model as `n` grows. Widening it restores 100%
-correct selection. Compare the observed gain with its degrees of freedom as a
-check that the sieve is adequate.
-
-### Informative censoring
-
-```bash
-python -m ode_unify.numerical_study.run_informative --setting 1 2 3 4 \
-    --only random cov cov_decr --reps 1000 --workers 10
-python -m ode_unify.numerical_study.plot_informative --min-cp 0.85
-```
-
-Each subject's censoring time is `C_i = C0_i · exp(x_i'γ_c) · ξ_i^{c_ξ}`. With
-`γ_c ≠ 0` and `c_ξ = 0` the censoring depends on the *observed* covariates, so
-conditional independence given `x` still holds and the estimator is unaffected. With
-`c_ξ ≠ 0` it depends on the *unobserved* frailty, which genuinely violates the
-assumption. `plot_informative.py` renders the former group only.
+If you use this code, please cite the paper above.

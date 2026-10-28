@@ -155,8 +155,8 @@ def simulate(N, seed, setting=None, *, random_effect=False,
         ``C_i = C0_i * exp(x_i' gamma_c)`` -- so the censoring distribution
         depends on the same covariates that drive the event process. With
         ``gamma_c = 0`` (or ``None``) this reduces to the covariate-independent
-        ``U(a, b)`` censoring. This is the "censoring depends on X" scenario
-        requested by the reviewers (conditional independence given ``x`` still
+        ``U(a, b)`` censoring. This is the covariate-dependent censoring of
+        Section 5.3 of the paper (conditional independence given ``x`` still
         holds, so a consistent estimator should be unaffected).
     censor_frailty_coef : float
         Frailty-dependent censoring strength ``c_xi``. When non-zero, the
