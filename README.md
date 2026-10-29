@@ -300,10 +300,10 @@ ode_unify/
 │   ├── cox/  aft/  ltm/  npmle/
 │   └── random_effect/   # frailty variants
 ├── tests/               # solver-cascade regression tests (no pytest required)
-├── numerical_study/     # simulation studies of Section 5 and Supplement D
+├── numerical_study/     # simulation studies of Section 5 and Supplement A
 │   ├── tables/                  # every simulation table, rebuilt by make_tables.py
 │   ├── simulation_study/        # Sections 5.1-5.3 (figures; .npz results git-ignored)
-│   └── bic_model_selection/     # Sections 5.4-5.5 and Supplement D
+│   └── bic_model_selection/     # Sections 5.4-5.5 and Supplement A
 │       ├── results/                 # saved results behind the tables (.csv, .npz)
 │       ├── knot_curves_all_settings.png   # Figure S1
 │       └── knot_placement.png             # Figure S2
@@ -322,17 +322,17 @@ the commands below regenerate the saved results themselves.
 | Paper | Script | Saved results |
 |---|---|---|
 | Tables 2-4, Figures 1-4 (Sections 5.1-5.2) | `run_paper.py run --reps 1000`, then `run_paper.py report` / `plot` | `simulation_study/random_censoring/results/` (git-ignored, regenerable) |
-| Table 5 (Section 5.3), Table S5 (Supplement D.5) | `run_informative.py --setting 1 2 3 4 --only random cov cov_decr --reps 1000`; `run_informative.py --only random_fr frailty_inf --reps 1000` | `simulation_study/informative_censoring/results/` (git-ignored); `tables/table_5_*.csv`, `tables/table_S5_*.csv` |
-| Table 6 (Section 5.4), Supplement D.4 | `lr_bootstrap.py --reps 300 --grid 1:1000 3:1000 7:1000 --out bic_model_selection/results/lr_bootstrap.csv`; `lr_bootstrap.py --reps 200 --grid 1:2000 7:2000 1:4000 7:4000 --out bic_model_selection/results/lr_settings_table.csv` | `lr_bootstrap.csv`, `lr_settings_table.csv` |
+| Table 5 (Section 5.3) | `run_informative.py --setting 1 2 3 4 --only random cov cov_decr --reps 1000` | `simulation_study/informative_censoring/results/` (git-ignored); `tables/table_5_*.csv` |
+| Table 6 (Section 5.4), Supplement A.4 | `lr_bootstrap.py --reps 300 --grid 1:1000 3:1000 7:1000 --out bic_model_selection/results/lr_bootstrap.csv`; `lr_bootstrap.py --reps 200 --grid 1:2000 7:2000 1:4000 7:4000 --out bic_model_selection/results/lr_settings_table.csv` | `lr_bootstrap.csv`, `lr_settings_table.csv` |
 | Table 7 (Section 5.5) | `bic_selection_quantile.py --reps 100 --grid 1:2000 2:2000 3:2000 7:2000 --out bic_model_selection/results/bic_selection_q17_n2000.csv` | `bic_selection_q17_n2000*.csv` |
-| Supplement D.3 (equally spaced knots) | `bic_selection.py --reps 100 --grid 1:2000 2:2000 3:2000 7:2000 --out bic_model_selection/results/bic_selection_n2000.csv` | `bic_selection_n2000*.csv` |
+| Supplement A.3 (equally spaced knots) | `bic_selection.py --reps 100 --grid 1:2000 2:2000 3:2000 7:2000 --out bic_model_selection/results/bic_selection_n2000.csv` | `bic_selection_n2000*.csv` |
 | Table S1, Figure S1 | `knot_single.py --reps 20 --n 2000 --settings 9 10 11 12 --tag single`; `knot_single.py --reps 20 --n 2000 --settings 11 12 --tag single_noanchor`; `knot_setting4.py --reps 30 --n 2000 --tag s4_fixed`; then `plot_knot_sensitivity.py` | `knot_single*.{csv,npz}`, `knot_s4_fixed*.{csv,npz}` |
 | Table S2 | `knot_single.py --reps 5 --n 1000 --settings 9 10 11 12 --tag n1000`; `knot_single.py --reps 20 --n 2000 --settings 13 --tag s13` (likewise 14, 15); then `aic_bic_knots.py` | `knot_n1000.csv`, `knot_s13.csv`, `knot_s14.csv`, `knot_s15.csv` |
 | Tables S3-S4, Figure S2 | `knot_placement.py --reps 40 --n 1000 --p P --out bic_model_selection/results/place_pP.csv` for P in 0.10 0.14 0.20 0.25 0.30; then `bic_model_selection/plot_knot_placement.py` | `place_p*.csv` |
 
 ```bash
 cd numerical_study
-python make_tables.py       # Tables 5-7, S1, S3-S5 and the Supplement D.3/D.4 numbers -> tables/
+python make_tables.py       # Tables 5-7, S1, S3-S4 and the Supplement A.3/A.4 numbers -> tables/
 python aic_bic_knots.py     # Table S2 -> tables/
 ```
 

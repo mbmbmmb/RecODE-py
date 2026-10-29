@@ -12,7 +12,7 @@ with a known truth we record which model BIC (and AIC) selects.
 
 Sieve: ceil(m^(1/7)) intervals for both log alpha and log q, knots at sample quantiles.
 The same study with the equally spaced knots of bic_selection.py is reported in
-Section D.3 of the Supplementary Material.
+Section A.3 of the Supplementary Material.
 
 Usage (from this directory):
 

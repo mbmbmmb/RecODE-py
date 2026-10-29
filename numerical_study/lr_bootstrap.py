@@ -1,5 +1,5 @@
 """Parametric-bootstrap likelihood ratio test of the Cox-type restriction
-(Section 5.4 and Table 6 of the paper; Section D.4 of the Supplementary Material).
+(Section 5.4 and Table 6 of the paper; Section A.4 of the Supplementary Material).
 
 H0: q == 1 (ODE-Cox)   against   H1: q unspecified (ODE-Flex).
 
@@ -20,7 +20,7 @@ whose knots are placed at sample quantiles (event times for alpha, fitted ODE-Co
 mean functions for q), where m is the number of subjects.
 
 Settings: 1 (H0 true), 7 (H1 true: alpha = t + 1, q = 1 + 0.7 sin(1.5u)) and
-3 (Box-Cox transformation model, outside the sieve; Section D.4).
+3 (Box-Cox transformation model, outside the sieve; Section A.4).
 
 Usage (from this directory):
 

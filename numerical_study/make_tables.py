@@ -9,12 +9,11 @@ the saved results, and write them to tables/.
                                                      knot_s4_fixed.csv
     Table S3  knot placement (median RMSE)           place_p*.csv
     Table S4  BIC across placement and knot number   place_p*.csv
-    Table S5  censoring driven by a frailty          informative_censoring/results/*.npz
-    Sec. D.3  BIC selection with equally spaced knots  bic_selection_n2000.csv
-    Sec. D.4  power under Setting 3                  lr_bootstrap.csv
+    Sec. A.3  BIC selection with equally spaced knots  bic_selection_n2000.csv
+    Sec. A.4  power under Setting 3                  lr_bootstrap.csv
 
 Table S2 is produced by aic_bic_knots.py. The informative-censoring .npz files are not
-stored in the repository (regenerate them with run_informative.py); their summaries are
+stored in the repository (regenerate them with run_informative.py); their summary is
 kept in tables/.
 """
 import glob
@@ -48,9 +47,9 @@ def censoring_row(path):
                 ESE=S.mean(), CP=(np.abs(B - t) <= 1.959964 * S).mean(), reps=int(ok.sum()))
 
 
-def table5_and_S5():
+def table5():
     if not os.path.isdir(INF):
-        print('\n(skipping Tables 5 and S5: run run_informative.py to create', INF, ')')
+        print('\n(skipping Table 5: run run_informative.py to create', INF, ')')
         return
     rows = []
     for s, model in [(1, 'ODE-Cox'), (2, 'ODE-AM'), (3, 'ODE-LT'), (4, 'ODE-Flex')]:
@@ -59,12 +58,6 @@ def table5_and_S5():
             rows.append(dict(setting=s, model=model, k=k,
                              **censoring_row(os.path.join(INF, f'{pre}{regime}.npz'))))
     save(pd.DataFrame(rows), 'table_5_covariate_censoring.csv')
-    rows = []
-    for regime, frail, k, cxi in [('random', 'No', 0, 0), ('cov', 'No', 0.5, 0),
-                                  ('random_fr', 'Yes', 0, 0), ('frailty_inf', 'Yes', 0.5, 1)]:
-        rows.append(dict(frailty_in_event_process=frail, k=k, c_xi=cxi,
-                         **censoring_row(os.path.join(INF, f'{regime}.npz'))))
-    save(pd.DataFrame(rows), 'table_S5_frailty_censoring.csv')
 
 
 def rejection_rates(df):
@@ -85,12 +78,12 @@ def rejection_rates(df):
 def table6():
     d = pd.concat([pd.read_csv(os.path.join(R, 'lr_bootstrap.csv')),
                    pd.read_csv(os.path.join(R, 'lr_settings_table.csv'))], ignore_index=True)
-    save(rejection_rates(d), 'table_6_lr_test_and_D4.csv')
+    save(rejection_rates(d), 'table_6_lr_test_and_A4.csv')
 
 
 def table7():
     for f, name in [('bic_selection_q17_n2000.csv', 'table_7_bic_selection.csv'),
-                    ('bic_selection_n2000.csv', 'sec_D3_bic_selection_equal_knots.csv')]:
+                    ('bic_selection_n2000.csv', 'sec_A3_bic_selection_equal_knots.csv')]:
         d = pd.read_csv(os.path.join(R, f))
         d = d[d.crit == 'BIC'][['setting', 'n', 'truth', 'n_ok', 'Cox', 'AM', 'LT', 'Flex', 'correct']]
         save(d, name)
@@ -136,7 +129,7 @@ def placement():
 
 
 if __name__ == '__main__':
-    table5_and_S5()
+    table5()
     table6()
     table7()
     tableS1()
