@@ -84,13 +84,21 @@ def _unpack(data, order='C'):
 # estimation cores (each mirrors its main() exactly)
 # --------------------------------------------------------------------------- #
 
-def _est_cox(data, knots_setting, order):
+def _est_cox(data, knots_setting, order, knot_exp=None):
     x, time, delta, _ = _unpack(data, order)
     p = x.shape[1]
     k = 3
-    l = x.shape[0] ** (1.0 / 7.0)
+    l = x.shape[0] ** (knot_exp or 1.0 / 7.0)
     num_breaks = int(np.floor(l)) + 1
-    knots = augknt(np.linspace(0.0, float(np.max(time)), num_breaks), k)
+    if knots_setting == 'quantile':
+        L = num_breaks - 1
+        interior = np.quantile(time[delta > 0], np.arange(1, L) / L)
+        knots = augknt(np.concatenate([[0.0], interior,
+                                       [float(np.max(time))]]), k)
+    elif knots_setting in (None, 'equal'):
+        knots = augknt(np.linspace(0.0, float(np.max(time)), num_breaks), k)
+    else:
+        raise ValueError(f'unknown knots_setting={knots_setting}')
     q = len(knots) - k
     t0 = _time.time()
     res = minimize(lambda r: _cox_obj(r, x, time, delta, knots, k),
@@ -100,12 +108,12 @@ def _est_cox(data, knots_setting, order):
     return dict(est_r=res.x, p=p, k=k, q=q, l=l, knots=knots, runtime=runtime)
 
 
-def _est_aft(data, knots_setting, order):
+def _est_aft(data, knots_setting, order, knot_exp=None):
     x, time, delta, id_vec = _unpack(data, order)
     N = int(np.unique(id_vec).size)
     temp, beta0 = _aft_cox_rec(x, time, delta)
     k = 4
-    l = int(np.ceil(N ** (1.0 / 5.0))) + 1
+    l = int(np.ceil(N ** (knot_exp or 1.0 / 5.0))) + 1
     if knots_setting == 'quantile':
         interior = np.quantile(temp, np.arange(1, l) / l)
         breaks = np.concatenate([[0.0], interior, [float(np.max(temp))]])
@@ -122,14 +130,14 @@ def _est_aft(data, knots_setting, order):
     return dict(est_r=est_r, p=p, k=k, q=q, l=l, knots=knots, runtime=runtime)
 
 
-def _est_npmle(data, knots_setting, order):
+def _est_npmle(data, knots_setting, order, knot_exp=None):
     x, time, delta, id_vec = _unpack(data, order)
     rho1 = float(np.asarray(data.get('rho1', 0.5)).ravel()[0])
     r1 = float(np.asarray(data.get('r1', 1.0)).ravel()[0])
     N = int(np.unique(id_vec).size)
     p = x.shape[1]
     k = 3
-    l = int(np.ceil(N ** (1.0 / 5.0)) + 2)
+    l = int(np.ceil(N ** (knot_exp or 1.0 / 5.0)) + 2)
     temp = time[delta > 0]
     if knots_setting == 'quantile':
         interior = np.quantile(temp, np.arange(1, l) / l)
@@ -151,22 +159,22 @@ def _est_npmle(data, knots_setting, order):
                 rho1=rho1, r1=r1, runtime=runtime)
 
 
-def _est_ltm(data, knots_setting, order):
+def _est_ltm(data, knots_setting, order, knot_exp=None):
     x, time, delta, id_vec = _unpack(data, order)
     t0 = _time.time()
     est, knots_0, knots_q, k0, kq, q_0, q_q = _ltm_mle(
-        x, time, delta, id_vec, knots_setting)
+        x, time, delta, id_vec, knots_setting, knot_exp)
     runtime = _time.time() - t0
     return dict(est_r=est[:-1], succ_ind=int(est[-1]), p=x.shape[1],
                 q_0=q_0, q_q=q_q, knots_0=knots_0, knots_q=knots_q,
                 k0=k0, kq=kq, runtime=runtime)
 
 
-def _est_re_cox(data, knots_setting, order):
+def _est_re_cox(data, knots_setting, order, knot_exp=None):
     x, time, delta, _ = _unpack(data, order)
     p = x.shape[1]
     k = 3
-    l = x.shape[0] ** (1.0 / 7.0)
+    l = x.shape[0] ** (knot_exp or 1.0 / 7.0)
     knots = augknt(np.linspace(0.0, float(np.max(time)), int(l) + 1), k)
     q = len(knots) - k
     t0 = _time.time()
@@ -177,11 +185,11 @@ def _est_re_cox(data, knots_setting, order):
     return dict(est_r=res.x, p=p, k=k, q=q, l=l, knots=knots, runtime=runtime)
 
 
-def _est_re_aft(data, knots_setting, order):
+def _est_re_aft(data, knots_setting, order, knot_exp=None):
     x, time, delta, id_vec = _unpack(data, order)
     temp, beta0 = _re_aft_cox_rec(x, time, delta)
     k = 4
-    l = int(np.ceil(x.shape[0] ** (1.0 / 5.0)))
+    l = int(np.ceil(x.shape[0] ** (knot_exp or 1.0 / 5.0)))
     if knots_setting == 'quantile':
         interior = np.quantile(temp, np.arange(1, l) / l)
         knots = augknt(np.concatenate([[0.0], interior, [float(np.max(temp))]]), k)
@@ -197,11 +205,11 @@ def _est_re_aft(data, knots_setting, order):
     return dict(est_r=est_r, p=p, k=k, q=q, l=l, knots=knots, runtime=runtime)
 
 
-def _est_re_ltm(data, knots_setting, order):
+def _est_re_ltm(data, knots_setting, order, knot_exp=None):
     x, time, delta, _ = _unpack(data, order)
     t0 = _time.time()
     est, p, q_q, q_0, knots_0, knots_q, k0, kq, l0, lq = _re_ltm_mle(
-        x, time, delta, knots_setting)
+        x, time, delta, knots_setting, knot_exp)
     runtime = _time.time() - t0
     return dict(est_r=est[:-1], succ_ind=int(est[-1]), p=p,
                 q_q=q_q, q_0=q_0, knots_0=knots_0, knots_q=knots_q,
@@ -229,7 +237,7 @@ _LEGACY_ORDER = {
 
 
 def estimate(data, *, estimator, random_effect=False, knots=None, seed=0,
-             layout='uniform'):
+             layout='uniform', knot_exp=None):
     """Fit the model and return point estimates only (fast; no SEs).
 
     Parameters
@@ -241,8 +249,10 @@ def estimate(data, *, estimator, random_effect=False, knots=None, seed=0,
     random_effect : bool
         Fit the gamma-frailty version.
     knots : str or None
-        Knot scheme: ``'quantile'``/``'equal'`` for aft, ``'K1'``..``'K4'`` for
-        ltm (defaults: aft ``'quantile'``, ltm ``'K4'``). Ignored for cox.
+        Knot scheme: ``'quantile'``/``'equal'`` for cox, aft and npmle,
+        ``'K1'``..``'K4'`` for ltm (defaults: cox ``'equal'``, aft
+        ``'quantile'``, npmle ``'equal'``, ltm ``'K4'``). Ignored for the
+        frailty version of cox.
     seed : int
         Stored on the result; used by the resampling inference of the frailty
         models (match it to the data seed to reproduce the reference pipelines).
@@ -253,6 +263,10 @@ def estimate(data, *, estimator, random_effect=False, knots=None, seed=0,
         layout (C for the non-frailty models, Fortran for the frailty ones),
         reproducing the standalone modules bit-for-bit. The two layouts agree
         to optimizer tolerance (~1e-6 on estimates, far below the SEs).
+    knot_exp : float or None
+        Exponent of the rule that sets the number of knots (e.g. ``N ** knot_exp``
+        intervals). ``None`` keeps each estimator's default, 1/7 for cox and
+        1/5 for the others.
     """
     key = (estimator, bool(random_effect))
     if key not in _CORES:
@@ -265,7 +279,7 @@ def estimate(data, *, estimator, random_effect=False, knots=None, seed=0,
         knots = _DEFAULT_KNOTS[estimator]
     order = 'C' if layout == 'uniform' else _LEGACY_ORDER[key]
 
-    raw = core(data, knots, order)
+    raw = core(data, knots, order, knot_exp)
 
     est_r = np.asarray(raw['est_r']).ravel()
     p = int(raw['p'])

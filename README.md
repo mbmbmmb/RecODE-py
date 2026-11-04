@@ -302,11 +302,10 @@ ode_unify/
 ├── tests/               # solver-cascade regression tests (no pytest required)
 ├── numerical_study/     # simulation studies of Section 5 and Supplement A
 │   ├── tables/                  # every simulation table, rebuilt by make_tables.py
-│   ├── simulation_study/        # Sections 5.1-5.3 (figures; .npz results git-ignored)
-│   └── bic_model_selection/     # Sections 5.4-5.5 and Supplement A
+│   ├── simulation_study/        # Sections 5.1-5.2 and Supplement A.1, A.5-A.6 (figures and raw results)
+│   └── bic_model_selection/     # Section 5.3 and Supplement A
 │       ├── results/                 # saved results behind the tables (.csv, .npz)
-│       ├── knot_curves_all_settings.png   # Figure S1
-│       └── knot_placement.png             # Figure S2
+│       └── knot_curves_all_settings.png   # Figure S1
 └── mimic_study/         # real-data analysis of Section 6 (see mimic_study/README.md)
     └── results/                 # aggregate results and Figure 5
 ```
@@ -314,26 +313,37 @@ ode_unify/
 ## Reproducing the paper
 
 All commands are run from the folder that contains the script. Saved results are
-included for every table, so `make_tables.py` rebuilds the tables without refitting;
-the commands below regenerate the saved results themselves.
+included for every table, so the tables can be rebuilt without refitting; the commands
+below regenerate the saved results themselves. The replication-level results of
+`run_paper.py` and `knot_beta_sensitivity.py` (one `.npz` file per replication) are
+stored as archives; extract them before rebuilding Tables 2-4 and S1-S2:
+
+```bash
+cd numerical_study/simulation_study
+tar xzf random_censoring/results.tar.gz -C random_censoring
+tar xzf knot_sensitivity/results.tar.gz -C knot_sensitivity
+```
 
 ### Simulation studies (`numerical_study/`)
 
 | Paper | Script | Saved results |
 |---|---|---|
-| Tables 2-4, Figures 1-4 (Sections 5.1-5.2) | `run_paper.py run --reps 1000`, then `run_paper.py report` / `plot` | `simulation_study/random_censoring/results/` (git-ignored, regenerable) |
-| Table 5 (Section 5.3) | `run_informative.py --setting 1 2 3 4 --only random cov cov_decr --reps 1000` | `simulation_study/informative_censoring/results/` (git-ignored); `tables/table_5_*.csv` |
-| Table 6 (Section 5.4), Supplement A.4 | `lr_bootstrap.py --reps 300 --grid 1:1000 3:1000 7:1000 --out bic_model_selection/results/lr_bootstrap.csv`; `lr_bootstrap.py --reps 200 --grid 1:2000 7:2000 1:4000 7:4000 --out bic_model_selection/results/lr_settings_table.csv` | `lr_bootstrap.csv`, `lr_settings_table.csv` |
-| Table 7 (Section 5.5) | `bic_selection_quantile.py --reps 100 --grid 1:2000 2:2000 3:2000 7:2000 --out bic_model_selection/results/bic_selection_q17_n2000.csv` | `bic_selection_q17_n2000*.csv` |
+| Tables 2-4, Figures 1-4 (Sections 5.1-5.2) | `run_paper.py run --reps 1000`, then `run_paper.py report` / `plot` | `simulation_study/random_censoring/results.tar.gz`; `tables/table_2_4_random_censoring.csv` (the values of this implementation; Tables 2-4 of the paper report the values of the original submission, which differ slightly) |
+| Table 5 (Section 5.3), Supplement A.4 | `lr_bootstrap.py --reps 300 --grid 1:1000 3:1000 7:1000 --out bic_model_selection/results/lr_bootstrap.csv`; `lr_bootstrap.py --reps 200 --grid 1:2000 7:2000 1:4000 7:4000 --out bic_model_selection/results/lr_settings_table.csv` | `lr_bootstrap.csv`, `lr_settings_table.csv` |
+| Tables S1-S2 (Supplement A.1) | `knot_beta_sensitivity.py run --reps 1000`, then `knot_beta_sensitivity.py report` (the replications with the default exponent and placement are those of `run_paper.py`) | `simulation_study/knot_sensitivity/results.tar.gz` and `simulation_study/random_censoring/results.tar.gz`; `tables/table_S1_S2_knots_beta.csv` (Table S1: rows with `paper_placement`; Table S2: the other rows) |
+| Table S3, Figure S1 (Supplement A.1) | `knot_single.py --reps 20 --n 2000 --settings 13 --tag s13` (likewise 14, 15; quantile knots); `knot_single.py --reps 20 --n 2000 --settings 13 14 15 --placement equal --tag s13_15_equal`; then `make_tables.py`. For Figure S1, `knot_curves.py` (the same fits, evaluated on a common grid), then `plot_knot_sensitivity.py` | `knot_s13.csv`, `knot_s14.csv`, `knot_s15.csv`, `knot_s13_15_equal.csv`, `knot_curves_s13_15.npz` |
+| Table S4 (Supplement A.2) | `knot_single.py --reps 5 --n 1000 --settings 9 10 11 12 --tag n1000`, together with the runs of settings 13-15 above; then `aic_bic_knots.py` | `knot_n1000.csv`, `knot_s13.csv`, `knot_s14.csv`, `knot_s15.csv` |
+| Table S5 (Supplement A.3) | `bic_selection_quantile.py --reps 100 --grid 1:2000 2:2000 3:2000 7:2000 --out bic_model_selection/results/bic_selection_q17_n2000.csv` | `bic_selection_q17_n2000*.csv` |
 | Supplement A.3 (equally spaced knots) | `bic_selection.py --reps 100 --grid 1:2000 2:2000 3:2000 7:2000 --out bic_model_selection/results/bic_selection_n2000.csv` | `bic_selection_n2000*.csv` |
-| Table S1, Figure S1 | `knot_single.py --reps 20 --n 2000 --settings 9 10 11 12 --tag single`; `knot_single.py --reps 20 --n 2000 --settings 11 12 --tag single_noanchor`; `knot_setting4.py --reps 30 --n 2000 --tag s4_fixed`; then `plot_knot_sensitivity.py` | `knot_single*.{csv,npz}`, `knot_s4_fixed*.{csv,npz}` |
-| Table S2 | `knot_single.py --reps 5 --n 1000 --settings 9 10 11 12 --tag n1000`; `knot_single.py --reps 20 --n 2000 --settings 13 --tag s13` (likewise 14, 15); then `aic_bic_knots.py` | `knot_n1000.csv`, `knot_s13.csv`, `knot_s14.csv`, `knot_s15.csv` |
-| Tables S3-S4, Figure S2 | `knot_placement.py --reps 40 --n 1000 --p P --out bic_model_selection/results/place_pP.csv` for P in 0.10 0.14 0.20 0.25 0.30; then `bic_model_selection/plot_knot_placement.py` | `place_p*.csv` |
+| Table S6 (Supplement A.5) | `run_informative.py --setting 1 2 3 4 --only random cov --reps 1000` | `simulation_study/informative_censoring/results/` (`random.npz`, `cov.npz`, `s[234]_random.npz`, `s[234]_cov.npz`); `tables/table_S6_*.csv` |
+| Tables S7-S8 (Supplement A.6) | `run_informative.py --only random_fr --reps 1000`; `run_informative.py --frailty-grid --k 0 0.1 0.2 0.3 0.5 --c-xi 0.025 0.05 0.075 0.1 0.15 0.2 0.3 0.5 0.75 1 --reps 1000` | `simulation_study/informative_censoring/results/` (`random.npz`, `cov.npz`, `random_fr.npz`, `s1_fr_k*_c*.npz`); `tables/table_S7_S8_*.csv` |
 
 ```bash
 cd numerical_study
-python make_tables.py       # Tables 5-7, S1, S3-S4 and the Supplement A.3/A.4 numbers -> tables/
-python aic_bic_knots.py     # Table S2 -> tables/
+python run_paper.py report  # Tables 2-4 -> tables/
+python make_tables.py       # Tables 5, S3, S5-S8 and the Supplement A.1/A.3/A.4 numbers -> tables/
+python aic_bic_knots.py     # Table S4 -> tables/
+python knot_beta_sensitivity.py report   # Tables S1-S2 -> tables/
 ```
 
 The settings are defined in `paper_dgp.py`: Settings 1-6 are those of Section 5,

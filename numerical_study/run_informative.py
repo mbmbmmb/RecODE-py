@@ -16,6 +16,8 @@ Usage::
 
     python -m ode_unify.numerical_study.run_informative --reps 1000 --workers 10
     python -m ode_unify.numerical_study.run_informative --only cov_decr --reps 100
+    python -m ode_unify.numerical_study.run_informative --frailty-grid --k 0 0.1 0.2 0.3 0.5 \
+        --c-xi 0.025 0.05 0.075 0.1 0.15 0.2 0.3 0.5 0.75 1 --reps 1000   # Supplement A.6
 """
 from __future__ import annotations
 import argparse, contextlib, io, os, sys, time
@@ -50,8 +52,19 @@ REGIMES = {
 }
 
 
+def frailty_regime(k, c):
+    """Name of the regime C = C0*exp(-k x'beta)*xi^c with a gamma frailty, beta=(1,1,1)."""
+    name = f'fr_k{k:g}_c{c:g}'
+    REGIMES.setdefault(name, ([-k] * 3 if k else None, float(c), True,
+                              f"C = C0*exp(-{k:g} x'beta)*xi^{c:g}, gamma frailty"))
+    return name
+
+
 def _one(args):
     name, seed, N, setting, beta = args
+    if name.startswith('fr_k'):
+        k, c = name[4:].split('_c')
+        frailty_regime(float(k), float(c))
     gc, cxi, re, _ = REGIMES[name]
     try:
         with contextlib.redirect_stdout(io.StringIO()), \
@@ -116,7 +129,14 @@ def main(argv=None):
     ap.add_argument('--workers', type=int, default=10)
     ap.add_argument('--only', nargs='*', default=None)
     ap.add_argument('--out', default=OUT)
+    ap.add_argument('--frailty-grid', action='store_true',
+                    help='run the frailty regimes given by --k and --c-xi')
+    ap.add_argument('--k', type=float, nargs='+', default=[0.0, 0.5])
+    ap.add_argument('--c-xi', type=float, nargs='+', default=[0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0])
     a = ap.parse_args(argv)
+    if a.frailty_grid:
+        a.only = [frailty_regime(k, c) for k in a.k for c in [0.0] + a.c_xi
+                  if (k, c) != (0.0, 0.0)]
     sel = a.only or list(REGIMES)
     bad = [s for s in sel if s not in REGIMES]
     if bad:

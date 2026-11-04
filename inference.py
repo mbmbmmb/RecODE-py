@@ -280,11 +280,11 @@ def inference(est: Estimate, data, *, seed=None, data_setting=None,
 
 def fit(data, *, estimator, random_effect=False, knots=None, ci=True,
         seed=0, data_setting=None, spline_se=True,
-        layout='uniform') -> Estimate:
+        layout='uniform', knot_exp=None) -> Estimate:
     """Convenience wrapper: :func:`estimate` then (if ``ci``) :func:`inference`."""
     from .estimator import estimate
     est = estimate(data, estimator=estimator, random_effect=random_effect,
-                   knots=knots, seed=seed, layout=layout)
+                   knots=knots, seed=seed, layout=layout, knot_exp=knot_exp)
     if ci:
         est = inference(est, data, seed=seed, data_setting=data_setting,
                         spline_se=spline_se)

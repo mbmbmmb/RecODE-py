@@ -62,7 +62,7 @@ nested in ODE-Flex and the likelihood ratio statistic is non-negative.
 
 ## Main results
 
-### Regression coefficients (Table 9 of the paper)
+### Regression coefficients (Table 7 of the paper)
 
 Two-year window, 35,626 patients and 6,949 readmissions; covariates are on the
 standardized scale of Section 6.1, ordered by the ODE-Cox *p*-value. Under ODE-Flex the
@@ -119,7 +119,7 @@ band excludes zero for $0.21 \le u \le 0.32$, a range reached by about 34% of th
 
 | File | Content |
 |---|---|
-| `coefficients_2y.csv` | Table 9: estimates, standard errors, 95% intervals and p-values under both models |
+| `coefficients_2y.csv` | Table 7: estimates, standard errors, 95% intervals and p-values under both models |
 | `functional_alpha_2y.csv`, `functional_q_2y.csv` | Figure 5: `log α(t)` and `log q(u)` with pointwise standard errors |
 | `lr_test_2y.csv`, `bootstrap_lr_2y.csv` | LR = 55.41; bootstrap null median 5.62, maximum 18.28; p ≤ 1/201 |
 | `cohort_2y.csv` | 35,626 patients, 6,949 readmissions, spline and anchor settings |

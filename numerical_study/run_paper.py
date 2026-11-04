@@ -8,12 +8,16 @@ censoring for every setting), every study here draws covariates and censoring
 times exactly as the paper specifies them, so the summaries are directly
 comparable to Tables 1-3.
 
-Study coverage
+Study coverage (the slug prefixes t1-t3 follow the numbering of the original
+submission; the tables are Tables 2-4 of the revised paper)
 --------------
-* ``t1_*``  Table 1: ODE-Cox (S1), ODE-AM (S2), ODE-LT (S3), n=1000
-* ``t2_*``  Table 2: ODE-Flex, settings 1-4, n=1000
-* ``t3_*``  Table 3: settings 5-6 (Gamma frailty), ODE-Cox/ODE-AM and
+* ``t1_*``  Table 2: ODE-Cox (S1), ODE-AM (S2), ODE-LT (S3), n=1000
+* ``t2_*``  Table 3: ODE-Flex, settings 1-4, n=1000
+* ``t3_*``  Table 4: settings 5-6 (Gamma frailty), ODE-Cox/ODE-AM and
   ODE-Flex, n=2000 and n=4000
+
+``report`` prints the summaries and writes them to
+``tables/table_2_4_random_censoring.csv``.
 
 The competitor columns of Tables 1 and 3 (``reReg`` cox.LWYY / am.GL, the
 Zeng-Lin NPMLE, ``reda``) are **not** run here -- they are not part of the local
@@ -25,6 +29,7 @@ Usage::
     python -m ode_unify.numerical_study.run_paper all  --reps 100 --workers 9
     python -m ode_unify.numerical_study.run_paper run  --only t1_cox_s1 --reps 100
     python -m ode_unify.numerical_study.run_paper plot
+    python -m ode_unify.numerical_study.run_paper report
 """
 from __future__ import annotations
 
@@ -438,7 +443,13 @@ def summarize(slug, out_root=DEFAULT_RESULTS, truth=1.0,
                 mean_events=float(np.mean(EV)), coef=rows)
 
 
+PAPER_TABLE = {'t1': 2, 't2': 3, 't3': 4}
+ESTIMATOR_NAME = {'cox': 'ODE-Cox', 'aft': 'ODE-AM', 'npmle': 'ODE-LT',
+                  'ltm': 'ODE-Flex'}
+
+
 def report(out_root=DEFAULT_RESULTS, only=None):
+    rows = []
     print(f'{"study":22s}{"reps":>5s}{"ok":>5s}{"drop":>5s}{"ev/rep":>9s}'
           f'{"coef":>8s}{"Bias":>9s}{"SE":>8s}{"ESE":>8s}{"CP":>7s}')
     print('-' * 86)
@@ -447,6 +458,14 @@ def report(out_root=DEFAULT_RESULTS, only=None):
         if r is None:
             print(f'{slug:22s}  (no results)')
             continue
+        cfg = STUDIES[slug]
+        for name, c in r['coef'].items():
+            rows.append(dict(table=PAPER_TABLE[slug[:2]], setting=cfg['setting'],
+                             estimator=ESTIMATOR_NAME[cfg['estimator']],
+                             n=cfg['N'], slug=slug, reps=r['reps'],
+                             se_dropped=r['n_se_dropped'], coef=name,
+                             bias=c['bias'], SE=c['se'], ESE=c['ese'],
+                             CP=c['cp']))
         first = True
         for name, c in r['coef'].items():
             head = f'{slug:22s}{r["reps"]:>5d}{r["success"]:>5d}' \
@@ -455,6 +474,11 @@ def report(out_root=DEFAULT_RESULTS, only=None):
             print(f'{head}{name:>8s}{c["bias"]:>+9.4f}{c["se"]:>8.4f}'
                   f'{c["ese"]:>8.4f}{c["cp"]:>7.3f}')
             first = False
+    if rows and only is None:
+        import pandas as pd
+        out = os.path.join(HERE, 'tables', 'table_2_4_random_censoring.csv')
+        pd.DataFrame(rows).to_csv(out, index=False)
+        print(f'\nwritten {out}')
 
 
 # --------------------------------------------------------------------------- #

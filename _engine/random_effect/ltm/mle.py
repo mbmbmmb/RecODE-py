@@ -18,15 +18,15 @@ from .objective_func_sieve import objective_func_sieve
 from .objective_func_beta import objective_func_beta
 
 
-def mle(x, time, delta, knots_setting):
+def mle(x, time, delta, knots_setting, knot_exp=None):
     x = np.asarray(x, dtype=float)
     time = np.asarray(time, dtype=float).ravel()
     delta = np.asarray(delta, dtype=float).ravel()
 
     N, p = x.shape
     k0 = 3; kq = 3
-    l0 = int(np.ceil(len(np.unique(time)) ** (1.0 / 5.0)))
-    lq = int(np.ceil(N ** (1.0 / 5.0)))
+    l0 = int(np.ceil(len(np.unique(time)) ** (knot_exp or 1.0 / 5.0)))
+    lq = int(np.ceil(N ** (knot_exp or 1.0 / 5.0)))
     temp1 = time[delta > 0]
     temp2, beta_init = cox_rec(x, time, delta)
 

@@ -14,7 +14,9 @@ Each model is paired with a simple and a complex truth, so the two questions sep
 (1) does the number of knots required track the complexity of the truth, and
 (2) does BIC, minimised over the sieve size, land near the sieve that minimises error?
 
-Knots are placed at quantiles, which spans the full support by construction.
+Knots are placed at quantiles, which spans the full support by construction, or, with
+--placement equal, equally spaced on [0, max t] for log alpha and on [0, 2 max mu_hat]
+for log q (as in Section 5 of the paper).
 """
 from __future__ import annotations
 
@@ -82,7 +84,8 @@ def _fit_one(x, t, delta, idv, binit, kn0, knq, model):
 
 
 def _one(args):
-    setting, seed, N, p_exp = args
+    # an optional sixth element gives the grid on which log q is evaluated (ODE-AM only)
+    setting, seed, N, p_exp, placement, *grid = args
     model = MODEL[setting]
     cf = CUSTOM_FUNCS[setting]
     try:
@@ -95,12 +98,16 @@ def _one(args):
             k = max(int(np.ceil((len(ut) if model == 'cox'
                                  else x.shape[0]) ** p_exp)), 2)
             if model == 'cox':
-                kn0 = augknt(np.quantile(np.concatenate([[0.0], ut]),
-                                         np.linspace(0, 1, k + 1)), LR.K0)
+                br = (np.linspace(0, float(ut.max()), k + 1) if placement == 'equal'
+                      else np.quantile(np.concatenate([[0.0], ut]),
+                                       np.linspace(0, 1, k + 1)))
+                kn0 = augknt(br, LR.K0)
                 knq = augknt(np.linspace(0, 2 * float(t2.max()), 3), LR.KQ)
             else:
                 kn0 = augknt(np.linspace(0, float(ut.max()), 3), LR.K0)
-                knq = augknt(np.quantile(t2, np.linspace(0, 1, k + 1)), LR.KQ)
+                br = (np.linspace(0, 2 * float(t2.max()), k + 1) if placement == 'equal'
+                      else np.quantile(t2, np.linspace(0, 1, k + 1)))
+                knq = augknt(br, LR.KQ)
             nll, beta, theta, alpha = _fit_one(x, t, delta, idv, binit,
                                                kn0, knq, model)
         n = int((delta == 0).sum())
@@ -112,7 +119,8 @@ def _one(args):
             fit = spcol(kn0, LR.K0, g) @ alpha
             true = np.log(cf['alpha'](g))
         else:
-            g = np.linspace(0.0, float(np.quantile(t2, 0.95)), NG)
+            g = (np.asarray(grid[0], float) if grid
+                 else np.linspace(0.0, float(np.quantile(t2, 0.95)), NG))
             # NO anchoring. Under ODE-AM alpha == 1, so A(t) = t and the scale map
             # (Q, A, beta) -> (k Q^c, k A^c, c beta) forces k = c = 1: the LEVEL of
             # log q is identified, exactly as the level of log alpha is under ODE-Cox.
@@ -123,13 +131,14 @@ def _one(args):
             # functional parameters are free and the scale freedom is real.
             fit = spcol(knq, LR.KQ, g) @ theta
             true = np.log(cf['q'](g))
-        return dict(setting=setting, seed=seed, p=p_exp, knots=k, npar=npar,
+        return dict(setting=setting, seed=seed, p=p_exp, placement=placement,
+                    knots=k, npar=npar,
                     BIC=bic, err=float(np.abs(fit - true).max()),
                     rmse=float(np.sqrt(np.mean((fit - true) ** 2))),
                     b2=float(beta[0]), ok=True,
                     fit=fit.tolist(), g=g.tolist(), true=true.tolist())
     except Exception:
-        return dict(setting=setting, seed=seed, p=p_exp, ok=False)
+        return dict(setting=setting, seed=seed, p=p_exp, placement=placement, ok=False)
 
 
 def main(argv=None):
@@ -140,11 +149,12 @@ def main(argv=None):
     ap.add_argument('--settings', nargs='*', type=int, default=[9, 10, 11, 12])
     ap.add_argument('--p', nargs='*', type=float,
                     default=[0.05, 0.10, 0.14, 0.20, 0.25, 0.30, 0.35])
+    ap.add_argument('--placement', choices=['quantile', 'equal'], default='quantile')
     ap.add_argument('--tag', default='single')
     a = ap.parse_args(argv)
     RES = os.path.join(HERE, 'bic_model_selection', 'results')
     os.makedirs(RES, exist_ok=True)
-    tasks = [(s, sd, a.n, p) for s in a.settings for p in a.p
+    tasks = [(s, sd, a.n, p, a.placement) for s in a.settings for p in a.p
              for sd in range(1, a.reps + 1)]
     print(f'{len(tasks)} fits: {len(a.settings)} settings x {len(a.p)} sieve sizes '
           f'x {a.reps} reps, n={a.n}', flush=True)

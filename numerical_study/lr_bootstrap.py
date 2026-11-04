@@ -1,5 +1,5 @@
 """Parametric-bootstrap likelihood ratio test of the Cox-type restriction
-(Section 5.4 and Table 6 of the paper; Section A.4 of the Supplementary Material).
+(Section 5.3 and Table 5 of the paper; Section A.4 of the Supplementary Material).
 
 H0: q == 1 (ODE-Cox)   against   H1: q unspecified (ODE-Flex).
 

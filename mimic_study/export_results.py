@@ -3,7 +3,7 @@
 Only summaries are written (no patient-level records), so that the files can be shared
 under the PhysioNet data use agreement:
 
-    coefficients_<tag>.csv        Table 9: ODE-Cox and ODE-Flex coefficients, SEs, p-values
+    coefficients_<tag>.csv        Table 7: ODE-Cox and ODE-Flex coefficients, SEs, p-values
     functional_<tag>.csv          Figure 5: log alpha(t) and log q(u) with pointwise SEs
     lr_test_<tag>.csv             likelihood ratio statistic and its bootstrap calibration
     bootstrap_lr_<tag>.csv        the bootstrap statistics

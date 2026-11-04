@@ -1,10 +1,11 @@
-"""Table S2 of the Supplementary Material: AIC and BIC as rules for choosing the number
+"""Table S4 of the Supplementary Material: AIC and BIC as rules for choosing the number
 of knots.
 
 For each setting, each criterion selects the number of knots separately on every
 simulated dataset. The table reports the oracle number of knots k* (smallest mean RMSE,
-which requires the truth), the most frequently selected number of knots, and the
-relative RMSE: the mean RMSE of the selected fits divided by the RMSE at k*.
+which requires the truth), the mean and standard deviation of the selected number of
+knots over the datasets, and the relative RMSE: the mean RMSE of the selected fits
+divided by the RMSE at k*.
 
 The sweeps store BIC = 2 n L + npar log n together with npar, so
 AIC = BIC - npar log n + 2 npar is recovered without refitting.
@@ -12,7 +13,7 @@ AIC = BIC - npar log n + 2 npar is recovered without refitting.
 Inputs (bic_model_selection/results/), produced by knot_single.py:
     knot_n1000.csv            settings 9-12, n = 1000, 5 replications
     knot_s13.csv, knot_s14.csv, knot_s15.csv   settings 13-15, n = 2000, 20 replications
-Output: tables/table_S2_aic_bic_knots.csv
+Output: tables/table_S4_aic_bic_knots.csv
 """
 import os
 
@@ -41,7 +42,7 @@ def main():
         row = dict(setting=s, model=DESC[s], n=n, reps=g.seed.nunique(), k_star=k_star)
         for c in ('AIC', 'BIC'):
             sel = g.loc[g.groupby('seed')[c].idxmin()]
-            row[f'k_{c}'] = int(sel.knots.value_counts().idxmax())
+            row[f'k_{c}_mean'], row[f'k_{c}_sd'] = sel.knots.mean(), sel.knots.std()
             row[f'rel_rmse_{c}'] = sel.rmse.mean() / rmse.min()
         rows.append(row)
     T = pd.DataFrame(rows)
@@ -50,7 +51,7 @@ def main():
         print(f'{c}: mean relative RMSE {T[f"rel_rmse_{c}"].mean():.2f}, '
               f'worst case {T[f"rel_rmse_{c}"].max():.2f}')
     os.makedirs(OUT, exist_ok=True)
-    T.to_csv(os.path.join(OUT, 'table_S2_aic_bic_knots.csv'), index=False)
+    T.to_csv(os.path.join(OUT, 'table_S4_aic_bic_knots.csv'), index=False)
 
 
 if __name__ == '__main__':

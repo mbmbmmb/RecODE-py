@@ -1,4 +1,4 @@
-"""Model selection across the ODE family by BIC (Section 5.5 and Table 7 of the paper).
+"""Model selection across the ODE family by BIC (Section A.3 and Table S5 of the Supplementary Material).
 
 ODE-Cox (q == 1), ODE-AM (alpha == 1), ODE-LT (q specified) and ODE-Flex (both free)
 are nested restrictions of one sieve parameterisation, so fitting all of them with the
@@ -11,7 +11,7 @@ with a known truth we record which model BIC (and AIC) selects.
     Setting 7  truth = general model (alpha = t+1, q = 1+0.7 sin(1.5u))
 
 Sieve: ceil(m^(1/7)) intervals for both log alpha and log q, knots at sample quantiles.
-The same study with the equally spaced knots of bic_selection.py is reported in
+The same study with the equally spaced knots of bic_selection.py is also reported in
 Section A.3 of the Supplementary Material.
 
 Usage (from this directory):

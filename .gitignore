@@ -17,10 +17,18 @@ dist/
 .vscode/
 *.swp
 
-# Monte-Carlo output (regenerable via numerical_study/run_paper.py and
-# run_informative.py); the .csv summaries under bic_model_selection/ are kept.
+# Monte-Carlo output of run_paper.py and knot_beta_sensitivity.py: one .npz per
+# replication, published as results.tar.gz next to each results/ folder.
 numerical_study/simulation_study/random_censoring/results/
-numerical_study/simulation_study/informative_censoring/results/
+numerical_study/simulation_study/knot_sensitivity/results/
+# run_informative.py output: keep the runs behind Tables S6-S8 only.
+numerical_study/simulation_study/informative_censoring/results/*
+!numerical_study/simulation_study/informative_censoring/results/random.npz
+!numerical_study/simulation_study/informative_censoring/results/cov.npz
+!numerical_study/simulation_study/informative_censoring/results/s[234]_random.npz
+!numerical_study/simulation_study/informative_censoring/results/s[234]_cov.npz
+!numerical_study/simulation_study/informative_censoring/results/random_fr.npz
+!numerical_study/simulation_study/informative_censoring/results/s1_fr_k*_c*.npz
 
 # simulate_study.py figures -- superseded by numerical_study/simulation_study/plots/
 /plots/
@@ -57,7 +65,6 @@ numerical_study/plot_bic_selection.py
 # Saved results: keep only the files behind the tables and figures of the paper
 numerical_study/bic_model_selection/*.png
 !numerical_study/bic_model_selection/knot_curves_all_settings.png
-!numerical_study/bic_model_selection/knot_placement.png
 numerical_study/bic_model_selection/results/*
 !numerical_study/bic_model_selection/results/lr_bootstrap.csv
 !numerical_study/bic_model_selection/results/lr_settings_table.csv
@@ -65,17 +72,12 @@ numerical_study/bic_model_selection/results/*
 !numerical_study/bic_model_selection/results/bic_selection_q17_n2000_raw.csv
 !numerical_study/bic_model_selection/results/bic_selection_n2000.csv
 !numerical_study/bic_model_selection/results/bic_selection_n2000_raw.csv
-!numerical_study/bic_model_selection/results/knot_single.csv
-!numerical_study/bic_model_selection/results/knot_single_curves.npz
-!numerical_study/bic_model_selection/results/knot_single_noanchor.csv
-!numerical_study/bic_model_selection/results/knot_single_noanchor_curves.npz
-!numerical_study/bic_model_selection/results/knot_s4_fixed.csv
-!numerical_study/bic_model_selection/results/knot_s4_fixed_curves.npz
 !numerical_study/bic_model_selection/results/knot_n1000.csv
 !numerical_study/bic_model_selection/results/knot_s13.csv
 !numerical_study/bic_model_selection/results/knot_s14.csv
 !numerical_study/bic_model_selection/results/knot_s15.csv
-!numerical_study/bic_model_selection/results/place_p*.csv
+!numerical_study/bic_model_selection/results/knot_s13_15_equal.csv
+!numerical_study/bic_model_selection/results/knot_curves_s13_15.npz
 
 # Local copy of the MIMIC-III input data (credentialed access; never commit)
 mimic_study/data/
